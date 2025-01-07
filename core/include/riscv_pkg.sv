@@ -416,6 +416,7 @@ package riscv;
     CSR_STVAL            = 12'h143,
     CSR_SIP              = 12'h144,
     CSR_SATP             = 12'h180,
+    CSR_SLWID            = 12'h190,  // Worldguard
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
     CSR_HEDELEG          = 12'h602,
@@ -482,6 +483,8 @@ package riscv;
     CSR_MTVAL2           = 12'h34B,
     CSR_MENVCFG          = 12'h30A,
     CSR_MENVCFGH         = 12'h31A,
+    CSR_MLWID            = 12'h390,   // Worldguard
+    CSR_MWIDDELEG        = 12'h748,   // Worldguard
     CSR_PMPCFG0          = 12'h3A0,
     CSR_PMPCFG1          = 12'h3A1,
     CSR_PMPCFG2          = 12'h3A2,

@@ -294,6 +294,11 @@ module csr_regfile
   assign pmpcfg_o  = pmpcfg_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
   assign pmpaddr_o = pmpaddr_q[(CVA6Cfg.NrPMPEntries>0?CVA6Cfg.NrPMPEntries-1 : 0):0];
 
+  // Worldguard CSRs
+  logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
+  logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;
+  logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
+
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------
   // Assignments
@@ -856,6 +861,21 @@ module csr_regfile
             csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b1};
           else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
         end
+
+        //WorldGuard
+        riscv::CSR_MLWID: begin
+          if (CVA6Cfg.RVU) csr_rdata = mlwid_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEG: begin
+          if (CVA6Cfg.RVS) csr_rdata = mwiddeleg_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_SLWID: begin
+          if (CVA6Cfg.RVS) csr_rdata = slwid_q;
+          else read_access_exception = 1'b1;
+        end
+
         default: read_access_exception = 1'b1;
       endcase
     end
@@ -992,6 +1012,15 @@ module csr_regfile
 
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
+
+    // WorldGuard
+    if (CVA6Cfg.RVU) begin
+      mlwid_d = mlwid_q;
+    end
+    if (CVA6Cfg.RVS) begin
+      slwid_d = slwid_q;
+      mwiddeleg_d = mwiddeleg_q;
+    end
 
     // check for correct access rights and that we are writing
     if (csr_we) begin
@@ -1712,6 +1741,21 @@ module csr_regfile
             pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
           end
         end
+
+        //WorldGuard
+        riscv::CSR_MLWID: begin
+          if (CVA6Cfg.RVU) mlwid_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEG: begin
+          if (CVA6Cfg.RVS) mwiddeleg_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_SLWID: begin
+          if (CVA6Cfg.RVS) slwid_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+
         default: update_access_exception = 1'b1;
       endcase
     end
@@ -2597,6 +2641,15 @@ module csr_regfile
           pmpaddr_q[i] <= '0;
         end
       end
+
+      // Worldguard
+      if (CVA6Cfg.RVU) begin
+        mlwid_q <= '0;
+      end
+      if (CVA6Cfg.RVS) begin
+        slwid_q <= '0;
+        mwiddeleg_q <= '0;
+      end
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -2670,6 +2723,15 @@ module csr_regfile
       // pmp
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
+
+      // Worldguard
+      if (CVA6Cfg.RVU) begin
+        mlwid_q <= mlwid_d;
+      end
+      if (CVA6Cfg.RVS) begin
+        slwid_q <= slwid_d;
+        mwiddeleg_q <= mwiddeleg_d;
+      end
     end
   end
 
