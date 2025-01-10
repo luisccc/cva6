@@ -586,6 +586,10 @@ package ariane_pkg;
   endfunction
 
   // -------------------
+  // Worldguard
+  // -------------------
+
+  // -------------------
   // Performance counter
   // -------------------
   localparam int unsigned MHPMCounterNum = 6;

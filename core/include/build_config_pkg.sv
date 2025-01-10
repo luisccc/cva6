@@ -79,6 +79,10 @@ package build_config_pkg;
     cfg.NR_SB_ENTRIES = CVA6Cfg.NrScoreboardEntries;
     cfg.TRANS_ID_BITS = $clog2(CVA6Cfg.NrScoreboardEntries);
 
+    // Worldguard
+    cfg.WgSMWGEn = CVA6Cfg.WgSMWGEn;
+    cfg.WgSSWGEn = CVA6Cfg.WgSSWGEn;
+
     cfg.FpPresent = bit'(FpPresent);
     cfg.NSX = bit'(NSX);
     cfg.FLen = unsigned'(FLen);

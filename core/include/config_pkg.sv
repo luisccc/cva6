@@ -206,6 +206,10 @@ package config_pkg;
     bit unsigned                 UseSharedTlb;
     // MMU depth of shared TLB
     int unsigned                 SharedTlbDepth;
+
+    // Worldguard
+    bit                          WgSMWGEn;
+    bit                          WgSSWGEn;
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -359,6 +363,9 @@ package config_pkg;
     int unsigned X_DUALWRITE;
     int unsigned X_ISSUE_REGISTER_SPLIT;
 
+    // Worldguard
+    bit                          WgSMWGEn;
+    bit                          WgSSWGEn;
   } cva6_cfg_t;
 
   /// Empty configuration to sanity check proper parameter passing. Whenever

@@ -864,15 +864,15 @@ module csr_regfile
 
         //WorldGuard
         riscv::CSR_MLWID: begin
-          if (CVA6Cfg.RVU) csr_rdata = mlwid_q;
+          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) csr_rdata = mlwid_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin
-          if (CVA6Cfg.RVS) csr_rdata = mwiddeleg_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) csr_rdata = mwiddeleg_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS) csr_rdata = slwid_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) csr_rdata = slwid_q;
           else read_access_exception = 1'b1;
         end
 
@@ -1014,10 +1014,10 @@ module csr_regfile
     pmpaddr_d              = pmpaddr_q;
 
     // WorldGuard
-    if (CVA6Cfg.RVU) begin
+    if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) begin
       mlwid_d = mlwid_q;
     end
-    if (CVA6Cfg.RVS) begin
+    if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
       slwid_d = slwid_q;
       mwiddeleg_d = mwiddeleg_q;
     end
@@ -1744,15 +1744,15 @@ module csr_regfile
 
         //WorldGuard
         riscv::CSR_MLWID: begin
-          if (CVA6Cfg.RVU) mlwid_d = csr_wdata;
+          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) mlwid_d = csr_wdata;
           else update_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin
-          if (CVA6Cfg.RVS) mwiddeleg_d = csr_wdata;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) mwiddeleg_d = csr_wdata;
           else update_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS) slwid_d = csr_wdata;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) slwid_d = csr_wdata;
           else update_access_exception = 1'b1;
         end
 
@@ -2643,10 +2643,10 @@ module csr_regfile
       end
 
       // Worldguard
-      if (CVA6Cfg.RVU) begin
+      if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) begin
         mlwid_q <= '0;
       end
-      if (CVA6Cfg.RVS) begin
+      if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
         slwid_q <= '0;
         mwiddeleg_q <= '0;
       end
@@ -2725,10 +2725,10 @@ module csr_regfile
       pmpaddr_q              <= pmpaddr_next;
 
       // Worldguard
-      if (CVA6Cfg.RVU) begin
+      if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) begin
         mlwid_q <= mlwid_d;
       end
-      if (CVA6Cfg.RVS) begin
+      if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
         slwid_q <= slwid_d;
         mwiddeleg_q <= mwiddeleg_d;
       end
