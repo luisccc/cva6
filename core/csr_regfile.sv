@@ -872,7 +872,7 @@ module csr_regfile
           else read_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) csr_rdata = slwid_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) csr_rdata = slwid_q;
           else read_access_exception = 1'b1;
         end
 
@@ -1752,7 +1752,7 @@ module csr_regfile
           else update_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) slwid_d = csr_wdata;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) slwid_d = csr_wdata;
           else update_access_exception = 1'b1;
         end
 
