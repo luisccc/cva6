@@ -49,6 +49,7 @@ module wt_dcache_missunit
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits_i,
     input logic [NumPorts-1:0][2:0] miss_size_i,
     input logic [NumPorts-1:0][CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_i,  // used as transaction ID
+    input logic [CVA6Cfg.WID_WIDTH-1:0] miss_wid_i,  // Worldguard ID
     // signals that the request collided with a pending read
     output logic [NumPorts-1:0] miss_replay_o,
     // signals response from memory
@@ -68,6 +69,7 @@ module wt_dcache_missunit
     output logic [CVA6Cfg.DCACHE_USER_LINE_WIDTH-1:0] wr_cl_user_o,
     output logic [CVA6Cfg.DCACHE_LINE_WIDTH/8-1:0] wr_cl_data_be_o,
     output logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] wr_vld_bits_o,
+    output logic [CVA6Cfg.WID_WIDTH-1:0] wr_wid_o,  // Worldguard ID
     // memory interface
     input logic mem_rtrn_vld_i,
     input dcache_rtrn_t mem_rtrn_i,
@@ -126,6 +128,7 @@ module wt_dcache_missunit
     logic                                        nc;
     logic [$clog2(CVA6Cfg.DCACHE_SET_ASSOC)-1:0] repl_way;
     logic [$clog2(NumPorts)-1:0]                 miss_port_idx;
+    logic [CVA6Cfg.WID_WIDTH-1:0]                wid;  // Worldguard ID
   } mshr_t;
 
   mshr_t mshr_d, mshr_q;
@@ -216,6 +219,7 @@ module wt_dcache_missunit
   assign mshr_d.nc            = (mshr_allocate) ? miss_nc_i[miss_port_idx] : mshr_q.nc;
   assign mshr_d.repl_way      = (mshr_allocate) ? repl_way : mshr_q.repl_way;
   assign mshr_d.miss_port_idx = (mshr_allocate) ? miss_port_idx : mshr_q.miss_port_idx;
+  assign mshr_d.wid           = (mshr_allocate) ? miss_wid_i[miss_port_idx] : mshr_q.wid;
 
   // currently we only have one outstanding read TX, hence an incoming load clears the MSHR
   assign mshr_vld_d           = (mshr_allocate) ? 1'b1 : (load_ack) ? 1'b0 : mshr_vld_q;
@@ -302,6 +306,8 @@ module wt_dcache_missunit
   assign mem_data_o.user = (CVA6Cfg.RVA && amo_sel) ? amo_user : miss_wuser_i[miss_port_idx];
   assign mem_data_o.size   = (CVA6Cfg.RVA && amo_sel) ? {1'b0, amo_req_i.size} : miss_size_i [miss_port_idx];
   assign mem_data_o.amo_op = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.amo_op : AMO_NONE;
+  // TODO: Check the WID for amo accesses
+  assign mem_data_o.wid = (CVA6Cfg.RVA && amo_sel) ? '0 : miss_wid_i[miss_port_idx];
 
   assign tmp_paddr         = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.operand_a[CVA6Cfg.PLEN-1:0] : miss_paddr_i[miss_port_idx];
   assign mem_data_o.paddr = paddrSizeAlign(tmp_paddr, mem_data_o.size);
@@ -416,6 +422,7 @@ module wt_dcache_missunit
 
   assign wr_cl_tag_o = mshr_q.paddr[CVA6Cfg.DCACHE_TAG_WIDTH+CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.DCACHE_INDEX_WIDTH];
   assign wr_cl_off_o = mshr_q.paddr[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0];
+  assign wr_wid_o = mshr_q.wid;
   assign wr_cl_data_o = mem_rtrn_i.data;
   assign wr_cl_user_o = mem_rtrn_i.user;
   assign wr_cl_data_be_o = (cl_write_en) ? '1 : '0;// we only write complete cachelines into the memory
