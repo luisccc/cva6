@@ -66,6 +66,7 @@ module wt_dcache
     logic [(CVA6Cfg.XLEN/8)-1:0] txblock;  // byte is part of transaction in-flight
     logic checked;  // if cache state of this word has been checked
     logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] hit_oh;  // valid way in the cache
+    logic [CVA6Cfg.WID_WIDTH-1:0] wid;  // Worldguard ID
   };
 
   // miss unit <-> read controllers
