@@ -185,6 +185,7 @@ module wt_dcache_wbuffer
   logic [(CVA6Cfg.XLEN/8)-1:0] tx_be;
   logic [CVA6Cfg.PLEN-1:0] wr_paddr, rd_paddr, extract_tag;
   logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_d, rd_tag_q;
+  logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid_d, rd_wid_q;  // Worldguard ID
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] rd_hit_oh_d, rd_hit_oh_q;
   logic check_en_d, check_en_q, check_en_q1;
   logic full, dirty_rd_en, rdy;
@@ -377,6 +378,7 @@ module wt_dcache_wbuffer
 
   assign extract_tag = rd_paddr >> CVA6Cfg.DCACHE_INDEX_WIDTH;
   assign rd_tag_d = extract_tag[CVA6Cfg.DCACHE_TAG_WIDTH-1:0];
+  assign rd_wid_d = wbuffer_check_mux.wid; // Make sure the WID is allways aligned with the tag
 
   // trigger TAG readout in cache
   assign rd_tag_only_o = 1'b1;
@@ -387,7 +389,7 @@ module wt_dcache_wbuffer
   assign rd_tag_o = rd_tag_q;  //delay by one cycle
   assign rd_idx_o = rd_paddr[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.DCACHE_OFFSET_WIDTH];
   assign rd_off_o = rd_paddr[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0];
-  assign rd_wid_o = wbuffer_check_mux.wid;
+  assign rd_wid_o = rd_wid_q; //delay by one cycle
   assign check_en_d = rd_req_o & rd_ack_i;
 
   // cache update port
@@ -623,6 +625,7 @@ module wt_dcache_wbuffer
       check_en_q   <= '0;
       check_en_q1  <= '0;
       rd_tag_q     <= '0;
+      rd_wid_q     <= CVA6Cfg.WID_RST_VALUE;
       rd_hit_oh_q  <= '0;
       wr_cl_vld_q  <= '0;
       wr_cl_idx_q  <= '0;
@@ -635,6 +638,7 @@ module wt_dcache_wbuffer
       check_en_q   <= check_en_d;
       check_en_q1  <= check_en_q;
       rd_tag_q     <= rd_tag_d;
+      rd_wid_q     <= rd_wid_d;
       rd_hit_oh_q  <= rd_hit_oh_d;
       wr_cl_vld_q  <= wr_cl_vld_d;
       wr_cl_idx_q  <= wr_cl_idx_d;
