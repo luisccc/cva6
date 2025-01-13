@@ -40,6 +40,7 @@ module wt_dcache_ctrl
     output logic miss_nc_o,  // request to I/O space
     output logic [2:0] miss_size_o,  // 00: 1byte, 01: 2byte, 10: 4byte, 11: 8byte, 111: cacheline
     output logic [CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_o,  // set to constant ID
+    output logic [CVA6Cfg.WID_WIDTH-1:0] miss_wid_o,  // Worldguard ID
     input logic miss_replay_i,  // request collided with pending miss - have to replay the request
     input  logic                            miss_rtrn_vld_i, // signals that the miss has been served, asserted in the same cycle as when the data returns from memory
     // used to detect readout mux collisions
@@ -48,6 +49,7 @@ module wt_dcache_ctrl
     output logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_o,  // tag in - comes one cycle later
     output logic [DCACHE_CL_IDX_WIDTH-1:0] rd_idx_o,
     output logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_o,
+    output logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid_o,  // Worldguard ID
     output logic rd_req_o,  // read the word at offset off_i[:3] in all ways
     output logic rd_tag_only_o,  // set to zero here
     input logic rd_ack_i,
@@ -77,6 +79,7 @@ module wt_dcache_ctrl
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] vld_data_d, vld_data_q;
   logic save_tag, rd_req_d, rd_req_q, rd_ack_d, rd_ack_q;
   logic [1:0] data_size_d, data_size_q;
+  logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] wid_d, wid_q;
 
   ///////////////////////////////////////////////////////
   // misc
@@ -85,6 +88,7 @@ module wt_dcache_ctrl
   // map address to tag/idx/offset and save
   assign vld_data_d = (rd_req_q) ? rd_vld_bits_i : vld_data_q;
   assign address_tag_d = (save_tag) ? req_port_i.address_tag : address_tag_q;
+  assign wid_d = (save_tag) ? req_port_i.wid : wid_q;
   assign address_idx_d = (req_port_o.data_gnt) ? req_port_i.address_index[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.DCACHE_OFFSET_WIDTH] : address_idx_q;
   assign address_off_d = (req_port_o.data_gnt) ? req_port_i.address_index[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0]                  : address_off_q;
   assign id_d = (req_port_o.data_gnt) ? req_port_i.data_id : id_q;
@@ -92,6 +96,7 @@ module wt_dcache_ctrl
   assign rd_tag_o = address_tag_d;
   assign rd_idx_o = address_idx_d;
   assign rd_off_o = address_off_d;
+  assign rd_wid_o = wid_d;
 
   assign req_port_o.data_rdata = rd_data_i;
   assign req_port_o.data_ruser = rd_user_i;
@@ -259,6 +264,7 @@ module wt_dcache_ctrl
       address_tag_q <= '0;
       address_idx_q <= '0;
       address_off_q <= '0;
+      wid_q         <= CVA6Cfg.WID_RST_VALUE;
       id_q          <= '0;
       vld_data_q    <= '0;
       data_size_q   <= '0;
@@ -269,6 +275,7 @@ module wt_dcache_ctrl
       address_tag_q <= address_tag_d;
       address_idx_q <= address_idx_d;
       address_off_q <= address_off_d;
+      wid_q         <= wid_d;
       id_q          <= id_d;
       vld_data_q    <= vld_data_d;
       data_size_q   <= data_size_d;

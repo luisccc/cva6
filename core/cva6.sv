@@ -201,6 +201,7 @@ module cva6
       logic [CVA6Cfg.DcacheIdWidth-1:0]      data_id;
       logic                                  kill_req;
       logic                                  tag_valid;
+      logic [CVA6Cfg.WID_WIDTH-1:0]          wid;  // Worldguard ID
     },
 
     localparam type dcache_req_o_t = struct packed {
