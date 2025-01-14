@@ -366,6 +366,9 @@ package config_pkg;
     // Worldguard
     bit                          WgSMWGEn;
     bit                          WgSSWGEn;
+
+    int unsigned WID_WIDTH;
+    int unsigned WID_RST_VALUE;
   } cva6_cfg_t;
 
   /// Empty configuration to sanity check proper parameter passing. Whenever

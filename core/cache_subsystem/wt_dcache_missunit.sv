@@ -49,7 +49,7 @@ module wt_dcache_missunit
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits_i,
     input logic [NumPorts-1:0][2:0] miss_size_i,
     input logic [NumPorts-1:0][CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_i,  // used as transaction ID
-    input logic [CVA6Cfg.WID_WIDTH-1:0] miss_wid_i,  // Worldguard ID
+    input logic [NumPorts-1:0][CVA6Cfg.WID_WIDTH-1:0] miss_wid_i,  // Worldguard ID
     // signals that the request collided with a pending read
     output logic [NumPorts-1:0] miss_replay_o,
     // signals response from memory

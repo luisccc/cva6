@@ -38,6 +38,7 @@ module store_unit
     input logic valid_i,
     // Data input - ISSUE_STAGE
     input lsu_ctrl_t lsu_ctrl_i,
+    input logic [CVA6Cfg.WID_WIDTH-1:0]  wid_i,         // Worldguard ID
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic pop_st_o,
     // Instruction commit - TO_BE_COMPLETED
@@ -134,6 +135,7 @@ module store_unit
   logic [CVA6Cfg.XLEN-1:0] st_data_n, st_data_q;
   logic [(CVA6Cfg.XLEN/8)-1:0] st_be_n, st_be_q;
   logic [1:0] st_data_size_n, st_data_size_q;
+  logic [CVA6Cfg.WID_WIDTH-1:0] st_wid_n, st_wid_q;
   amo_t amo_op_d, amo_op_q;
 
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_n, trans_id_q;
@@ -254,6 +256,7 @@ module store_unit
     st_data_n = (CVA6Cfg.RVA && instr_is_amo) ? lsu_ctrl_i.data[CVA6Cfg.XLEN-1:0] :
         data_align(lsu_ctrl_i.vaddr[2:0], {{64 - CVA6Cfg.XLEN{1'b0}}, lsu_ctrl_i.data});
     st_data_size_n = extract_transfer_size(lsu_ctrl_i.operation);
+    st_wid_n = wid_i;
     // save AMO op for next cycle
     if (CVA6Cfg.RVA) begin
       case (lsu_ctrl_i.operation)
@@ -313,6 +316,7 @@ module store_unit
       .paddr_i,
       .rvfi_mem_paddr_o     (rvfi_mem_paddr_o),
       .data_i               (st_data_q),
+      .wid_i                (st_wid_q),
       .be_i                 (st_be_q),
       .data_size_i          (st_data_size_q),
       .req_port_i           (req_port_i),
@@ -350,6 +354,7 @@ module store_unit
       state_q        <= IDLE;
       st_be_q        <= '0;
       st_data_q      <= '0;
+      st_wid_q       <= CVA6Cfg.WID_RST_VALUE;
       st_data_size_q <= '0;
       trans_id_q     <= '0;
       amo_op_q       <= AMO_NONE;
@@ -357,6 +362,7 @@ module store_unit
       state_q        <= state_d;
       st_be_q        <= st_be_n;
       st_data_q      <= st_data_n;
+      st_wid_q       <= st_wid_n;
       trans_id_q     <= trans_id_n;
       st_data_size_q <= st_data_size_n;
       amo_op_q       <= amo_op_d;

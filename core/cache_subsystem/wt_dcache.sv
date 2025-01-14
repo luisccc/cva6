@@ -77,6 +77,7 @@ module wt_dcache
   logic                                                                           wr_cl_nc;
   logic     [      CVA6Cfg.DCACHE_SET_ASSOC-1:0]                                  wr_cl_we;
   logic     [      CVA6Cfg.DCACHE_TAG_WIDTH-1:0]                                  wr_cl_tag;
+  logic     [             CVA6Cfg.WID_WIDTH-1:0]                                  wr_cl_wid;
   logic     [           DCACHE_CL_IDX_WIDTH-1:0]                                  wr_cl_idx;
   logic     [   CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0]                                  wr_cl_off;
   logic     [     CVA6Cfg.DCACHE_LINE_WIDTH-1:0]                                  wr_cl_data;
@@ -104,6 +105,8 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  miss_replay;
   logic     [                      NumPorts-1:0]                                  miss_rtrn_vld;
   logic     [         CVA6Cfg.MEM_TID_WIDTH-1:0]                                  miss_rtrn_id;
+  logic     [                      NumPorts-1:0][          CVA6Cfg.WID_WIDTH-1:0] miss_wid;  // Worldguard ID
+
 
   // memory <-> read controllers/miss unit
   logic     [                      NumPorts-1:0]                                  rd_prio;
@@ -111,6 +114,7 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  rd_req;
   logic     [                      NumPorts-1:0]                                  rd_ack;
   logic     [                      NumPorts-1:0][   CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag;
+  logic     [                      NumPorts-1:0][          CVA6Cfg.WID_WIDTH-1:0] rd_wid;  // Worldguard ID
   logic     [                      NumPorts-1:0][        DCACHE_CL_IDX_WIDTH-1:0] rd_idx;
   logic     [                      NumPorts-1:0][CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off;
   logic     [                  CVA6Cfg.XLEN-1:0]                                  rd_data;
@@ -160,6 +164,7 @@ module wt_dcache
       .miss_vld_bits_i(miss_vld_bits_o),
       .miss_size_i    (miss_size),
       .miss_id_i      (miss_id),
+      .miss_wid_i     (miss_wid),
       .miss_replay_o  (miss_replay),
       .miss_rtrn_vld_o(miss_rtrn_vld),
       .miss_rtrn_id_o (miss_rtrn_id),
@@ -171,6 +176,7 @@ module wt_dcache
       .wr_cl_nc_o     (wr_cl_nc),
       .wr_cl_we_o     (wr_cl_we),
       .wr_cl_tag_o    (wr_cl_tag),
+      .wr_cl_wid_o    (wr_cl_wid),
       .wr_cl_idx_o    (wr_cl_idx),
       .wr_cl_off_o    (wr_cl_off),
       .wr_cl_data_o   (wr_cl_data),
@@ -218,12 +224,14 @@ module wt_dcache
           .miss_nc_o      (miss_nc[k]),
           .miss_size_o    (miss_size[k]),
           .miss_id_o      (miss_id[k]),
+          .miss_wid_o     (miss_wid[k]),
           .miss_replay_i  (miss_replay[k]),
           .miss_rtrn_vld_i(miss_rtrn_vld[k]),
           // used to detect readout mux collisions
           .wr_cl_vld_i    (wr_cl_vld),
           // cache mem interface
           .rd_tag_o       (rd_tag[k]),
+          .rd_wid_o       (rd_wid[k]),
           .rd_idx_o       (rd_idx[k]),
           .rd_off_o       (rd_off[k]),
           .rd_req_o       (rd_req[k]),
@@ -240,6 +248,7 @@ module wt_dcache
       assign miss_req[k] = 1'b0;
       assign miss_we[k] = 1'b0;
       assign miss_wdata[k] = {{CVA6Cfg.XLEN} {1'b0}};
+      assign miss_wid[k] = {{CVA6Cfg.WID_WIDTH} {1'b0}};
       assign miss_wuser[k] = {{CVA6Cfg.DCACHE_USER_WIDTH} {1'b0}};
       assign miss_vld_bits_o[k] = {{CVA6Cfg.DCACHE_SET_ASSOC} {1'b0}};
       assign miss_paddr[k] = {{CVA6Cfg.PLEN} {1'b0}};
@@ -247,6 +256,7 @@ module wt_dcache
       assign miss_size[k] = 3'b0;
       assign miss_id[k] = {{CVA6Cfg.MEM_TID_WIDTH} {1'b0}};
       assign rd_tag[k] = {{CVA6Cfg.DCACHE_TAG_WIDTH} {1'b0}};
+      assign rd_wid[k] = {{CVA6Cfg.WID_WIDTH} {1'b0}};
       assign rd_idx[k] = {{DCACHE_CL_IDX_WIDTH} {1'b0}};
       assign rd_off[k] = {{CVA6Cfg.DCACHE_OFFSET_WIDTH} {1'b0}};
       assign rd_req[k] = 1'b0;
@@ -289,10 +299,12 @@ module wt_dcache
       .miss_nc_o      (miss_nc[NumPorts-1]),
       .miss_size_o    (miss_size[NumPorts-1]),
       .miss_id_o      (miss_id[NumPorts-1]),
+      .miss_wid_o     (miss_wid[NumPorts-1]),
       .miss_rtrn_vld_i(miss_rtrn_vld[NumPorts-1]),
       .miss_rtrn_id_i (miss_rtrn_id),
       // cache read interface
       .rd_tag_o       (rd_tag[NumPorts-1]),
+      .rd_wid_o       (rd_wid[NumPorts-1]),
       .rd_idx_o       (rd_idx[NumPorts-1]),
       .rd_off_o       (rd_off[NumPorts-1]),
       .rd_req_o       (rd_req[NumPorts-1]),
@@ -333,6 +345,7 @@ module wt_dcache
       // read ports
       .rd_prio_i      (rd_prio),
       .rd_tag_i       (rd_tag),
+      .rd_wid_i       (rd_wid),
       .rd_idx_i       (rd_idx),
       .rd_off_i       (rd_off),
       .rd_req_i       (rd_req),
@@ -347,6 +360,7 @@ module wt_dcache
       .wr_cl_nc_i     (wr_cl_nc),
       .wr_cl_we_i     (wr_cl_we),
       .wr_cl_tag_i    (wr_cl_tag),
+      .wr_cl_wid_i    (wr_cl_wid),
       .wr_cl_idx_i    (wr_cl_idx),
       .wr_cl_off_i    (wr_cl_off),
       .wr_cl_data_i   (wr_cl_data),

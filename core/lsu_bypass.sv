@@ -79,14 +79,14 @@ module lsu_bypass
 
     if (pop_ld_i) begin
       // invalidate the result
-      mem_n[read_pointer_q].valid = 1'b0;
+      mem_n[read_pointer_q].lsu_req.valid = 1'b0;
       read_pointer++;
       status_cnt--;
     end
 
     if (pop_st_i) begin
       // invalidate the result
-      mem_n[read_pointer_q].valid = 1'b0;
+      mem_n[read_pointer_q].lsu_req.valid = 1'b0;
       read_pointer++;
       status_cnt--;
     end

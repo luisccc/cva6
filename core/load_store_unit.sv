@@ -158,6 +158,11 @@ module load_store_unit
     output            [CVA6Cfg.PLEN-1:0] rvfi_mem_paddr_o
 );
 
+  localparam type lsu_ctrl_wid_t = struct packed {
+    lsu_ctrl_t lsu_req;
+    logic [CVA6Cfg.WID_WIDTH-1:0]  wid;         // Worldguard ID
+  };
+
   // data is misaligned
   logic                             data_misaligned;
   // --------------------------------------
@@ -408,6 +413,7 @@ module load_store_unit
 
       .valid_i   (st_valid_i),
       .lsu_ctrl_i(lsu_ctrl),
+      .wid_i     (lsu_ctrl_wid.wid),
       .pop_st_o  (pop_st),
       .commit_i,
       .commit_ready_o,
@@ -453,6 +459,7 @@ module load_store_unit
       .flush_i,
       .valid_i   (ld_valid_i),
       .lsu_ctrl_i(lsu_ctrl),
+      .wid_i     (lsu_ctrl_wid.wid),
       .pop_ld_o  (pop_ld),
 
       .valid_o              (ld_valid),
@@ -730,9 +737,10 @@ module load_store_unit
   // LSU Control
   // ------------------
   // new data arrives here
-  lsu_ctrl_t lsu_req_i;
+  lsu_ctrl_t lsu_req;
+  lsu_ctrl_wid_t lsu_req_wid, lsu_ctrl_wid;
 
-  assign lsu_req_i = {
+  assign lsu_req = {
     lsu_valid_i,
     vaddr_i,
     tinst_i,
@@ -747,22 +755,26 @@ module load_store_unit
     fu_data_i.trans_id
   };
 
+  assign lsu_req_wid.lsu_req = lsu_req;
+  assign lsu_req_wid.wid = 'h1;
+
   lsu_bypass #(
       .CVA6Cfg(CVA6Cfg),
-      .lsu_ctrl_t(lsu_ctrl_t)
+      .lsu_ctrl_t(lsu_ctrl_wid_t)
   ) lsu_bypass_i (
       .clk_i,
       .rst_ni,
       .flush_i,
-      .lsu_req_i      (lsu_req_i),
+      .lsu_req_i      (lsu_req_wid),
       .lsu_req_valid_i(lsu_valid_i),
       .pop_ld_i       (pop_ld),
       .pop_st_i       (pop_st),
 
-      .lsu_ctrl_o(lsu_ctrl),
+      .lsu_ctrl_o(lsu_ctrl_wid),
       .ready_o   (lsu_ready_o)
   );
 
+  assign lsu_ctrl = lsu_ctrl_wid.lsu_req;
   assign rvfi_lsu_ctrl_o = lsu_ctrl;
 
 endmodule
