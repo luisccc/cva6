@@ -37,7 +37,7 @@ module load_unit
     input logic valid_i,
     // Load request input - LSU_BYPASS
     input lsu_ctrl_t lsu_ctrl_i,
-    input logic [CVA6Cfg.WID_WIDTH-1:0]  wid_i,         // Worldguard ID
+    input logic [CVA6Cfg.WG_ID_WIDTH-1:0]  wid_i,         // Worldguard ID
     // Pop the load request from the LSU bypass FIFO - LSU_BYPASS
     output logic pop_ld_o,
     // Load unit result is valid - ISSUE_STAGE

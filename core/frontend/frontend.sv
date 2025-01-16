@@ -63,7 +63,10 @@ module frontend
     // Handshake's valid between fetch and decode - ID_STAGE
     output logic [CVA6Cfg.NrIssuePorts-1:0] fetch_entry_valid_o,
     // Handshake's ready between fetch and decode - ID_STAGE
-    input logic [CVA6Cfg.NrIssuePorts-1:0] fetch_entry_ready_i
+    input logic [CVA6Cfg.NrIssuePorts-1:0] fetch_entry_ready_i,
+    // WorldGuard ID
+    input logic [ CVA6Cfg.WG_ID_WIDTH-1:0] instr_wid_i
+
 );
 
   localparam type bht_update_t = struct packed {
@@ -317,6 +320,8 @@ module frontend
   // also if we killed the first stage we also need to kill the second stage (inclusive flush)
   assign icache_dreq_o.kill_s2 = icache_dreq_o.kill_s1 | bp_valid;
 
+  // Worldguard
+  assign icache_dreq_o.wid = instr_wid_i;
   // Update Control Flow Predictions
   bht_update_t bht_update;
   btb_update_t btb_update;

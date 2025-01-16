@@ -49,7 +49,7 @@ module wt_dcache_missunit
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits_i,
     input logic [NumPorts-1:0][2:0] miss_size_i,
     input logic [NumPorts-1:0][CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_i,  // used as transaction ID
-    input logic [NumPorts-1:0][CVA6Cfg.WID_WIDTH-1:0] miss_wid_i,  // Worldguard ID
+    input logic [NumPorts-1:0][CVA6Cfg.WG_ID_WIDTH-1:0] miss_wid_i,  // Worldguard ID
     // signals that the request collided with a pending read
     output logic [NumPorts-1:0] miss_replay_o,
     // signals response from memory
@@ -69,7 +69,7 @@ module wt_dcache_missunit
     output logic [CVA6Cfg.DCACHE_USER_LINE_WIDTH-1:0] wr_cl_user_o,
     output logic [CVA6Cfg.DCACHE_LINE_WIDTH/8-1:0] wr_cl_data_be_o,
     output logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] wr_vld_bits_o,
-    output logic [CVA6Cfg.WID_WIDTH-1:0] wr_cl_wid_o,  // Worldguard ID
+    output logic [CVA6Cfg.WG_ID_WIDTH-1:0] wr_cl_wid_o,  // Worldguard ID
     // memory interface
     input logic mem_rtrn_vld_i,
     input dcache_rtrn_t mem_rtrn_i,
@@ -128,7 +128,7 @@ module wt_dcache_missunit
     logic                                        nc;
     logic [$clog2(CVA6Cfg.DCACHE_SET_ASSOC)-1:0] repl_way;
     logic [$clog2(NumPorts)-1:0]                 miss_port_idx;
-    logic [CVA6Cfg.WID_WIDTH-1:0]                wid;  // Worldguard ID
+    logic [CVA6Cfg.WG_ID_WIDTH-1:0]                wid;  // Worldguard ID
   } mshr_t;
 
   mshr_t mshr_d, mshr_q;
@@ -307,7 +307,7 @@ module wt_dcache_missunit
   assign mem_data_o.size   = (CVA6Cfg.RVA && amo_sel) ? {1'b0, amo_req_i.size} : miss_size_i [miss_port_idx];
   assign mem_data_o.amo_op = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.amo_op : AMO_NONE;
   // TODO: Check the WID for amo accesses
-  assign mem_data_o.wid = (CVA6Cfg.RVA && amo_sel) ? '0 : miss_wid_i[miss_port_idx];
+  // assign mem_data_o.wid = (CVA6Cfg.RVA && amo_sel) ? '0 : miss_wid_i[miss_port_idx];
 
   assign tmp_paddr         = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.operand_a[CVA6Cfg.PLEN-1:0] : miss_paddr_i[miss_port_idx];
   assign mem_data_o.paddr = paddrSizeAlign(tmp_paddr, mem_data_o.size);

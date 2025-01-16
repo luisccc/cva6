@@ -42,7 +42,7 @@ module wt_dcache_mem
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_i,  // tag in - comes one cycle later
     input logic [NumPorts-1:0][DCACHE_CL_IDX_WIDTH-1:0] rd_idx_i,
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_i,
-    input logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid_i,  // Worldguard ID
+    input logic [NumPorts-1:0][CVA6Cfg.WG_ID_WIDTH-1:0] rd_wid_i,  // Worldguard ID
     input logic [NumPorts-1:0] rd_req_i,  // read the word at offset off_i[:3] in all ways
     input  logic  [NumPorts-1:0]                              rd_tag_only_i,      // only do a tag/valid lookup, no access to data arrays
     input logic [NumPorts-1:0] rd_prio_i,  // 0: low prio, 1: high prio
@@ -63,7 +63,7 @@ module wt_dcache_mem
     input logic [CVA6Cfg.DCACHE_USER_LINE_WIDTH-1:0] wr_cl_user_i,
     input logic [   CVA6Cfg.DCACHE_LINE_WIDTH/8-1:0] wr_cl_data_be_i,
     input logic [      CVA6Cfg.DCACHE_SET_ASSOC-1:0] wr_vld_bits_i,
-    input logic [             CVA6Cfg.WID_WIDTH-1:0] wr_cl_wid_i,  // Worldguard ID
+    input logic [           CVA6Cfg.WG_ID_WIDTH-1:0] wr_cl_wid_i,  // Worldguard ID
 
     // separate port for single word write, no tag access
     input logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] wr_req_i,  // write a single word to offset off_i[:3]
@@ -113,11 +113,12 @@ module wt_dcache_mem
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_USER_WIDTH-1:0]                      ruser_cl;          // selected word from each cacheline
 
   logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag;
-  logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid;
+  logic [CVA6Cfg.WG_ID_WIDTH-1:0] rd_wid;
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] vld_req;  // bit enable for valid regs
   logic vld_we;  // valid bits write enable
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] vld_wdata;  // valid bits to write
   logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_TAG_WIDTH-1:0]            tag_rdata;                    // these are the tags coming from the tagmem
+  logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.DCACHE_TAG_WIDTH-1:0]            wid_rdata;
   logic [DCACHE_CL_IDX_WIDTH-1:0] vld_addr;  // valid bit
 
   logic [$clog2(NumPorts)-1:0] vld_sel_d, vld_sel_q;
@@ -307,7 +308,6 @@ module wt_dcache_mem
   ///////////////////////////////////////////////////////
 
   logic [CVA6Cfg.DCACHE_TAG_WIDTH:0] vld_tag_rdata[CVA6Cfg.DCACHE_SET_ASSOC-1:0];
-  logic [CVA6Cfg.WID_WIDTH:0] wid_rdata[CVA6Cfg.DCACHE_SET_ASSOC-1:0];
 
   for (genvar k = 0; k < DCACHE_NUM_BANKS; k++) begin : gen_data_banks
     // Data RAM
@@ -363,11 +363,11 @@ module wt_dcache_mem
     // WID RAM
     sram_cache #(
         // tag + valid bit
-        .DATA_WIDTH (CVA6Cfg.WID_WIDTH),
+        .DATA_WIDTH (CVA6Cfg.WG_ID_WIDTH),
         .BYTE_ACCESS(0),
         .TECHNO_CUT (CVA6Cfg.TechnoCut),
         .NUM_WORDS  (CVA6Cfg.DCACHE_NUM_WORDS)
-    ) i_tag_sram (
+    ) i_wid_sram (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .req_i  (vld_req[i]),

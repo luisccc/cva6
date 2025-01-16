@@ -171,6 +171,8 @@ module ex_stage
     input logic flush_tlb_i,
     input logic flush_tlb_vvma_i,
     input logic flush_tlb_gvma_i,
+    // Flush TLB - Worldguard
+    input  logic flush_tlb_wg_i,
     // Privilege mode - CSR_REGFILE
     input riscv::priv_lvl_t priv_lvl_i,
     // Virtualization mode - CSR_REGFILE
@@ -179,6 +181,8 @@ module ex_stage
     input riscv::priv_lvl_t ld_st_priv_lvl_i,
     // Virtualization mode at which load and stores should happen - CSR_REGFILE
     input logic ld_st_v_i,
+    // Worldguard ID
+    input logic [CVA6Cfg.WG_ID_WIDTH-1:0] ld_st_wid_i,
     // Instruction is hypervisor load/store - CSR_REGFILE
     output logic csr_hs_ld_st_inst_o,
     // Supervisor user memory - CSR_REGFILE
@@ -557,6 +561,7 @@ module ex_stage
       .v_i,
       .ld_st_priv_lvl_i,
       .ld_st_v_i,
+      .ld_st_wid_i,
       .csr_hs_ld_st_inst_o,
       .sum_i,
       .vs_sum_i,
@@ -575,6 +580,7 @@ module ex_stage
       .flush_tlb_i,
       .flush_tlb_vvma_i,
       .flush_tlb_gvma_i,
+      .flush_tlb_wg_i,
       .itlb_miss_o,
       .dtlb_miss_o,
       .dcache_req_ports_i,

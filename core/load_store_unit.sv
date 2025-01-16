@@ -95,6 +95,7 @@ module load_store_unit
     input  riscv::priv_lvl_t                          ld_st_priv_lvl_i,
     // Virtualization mode at which load and stores should happen - CSR_REGFILE
     input  logic                                      ld_st_v_i,
+    input  logic            [CVA6Cfg.WG_ID_WIDTH-1:0] ld_st_wid_i,
     // Instruction is a hyp load/store - CSR_REGFILE
     output logic                                      csr_hs_ld_st_inst_o,
     // Supervisor User Memory - CSR_REGFILE
@@ -129,6 +130,8 @@ module load_store_unit
     input  logic                                      flush_tlb_i,
     input  logic                                      flush_tlb_vvma_i,
     input  logic                                      flush_tlb_gvma_i,
+    // TLB flush - Worldguard
+    input  logic                                      flush_tlb_wg_i,
     // Instruction TLB miss - PERF_COUNTERS
     output logic                                      itlb_miss_o,
     // Data TLB miss - PERF_COUNTERS
@@ -160,7 +163,7 @@ module load_store_unit
 
   localparam type lsu_ctrl_wid_t = struct packed {
     lsu_ctrl_t lsu_req;
-    logic [CVA6Cfg.WID_WIDTH-1:0]  wid;         // Worldguard ID
+    logic [CVA6Cfg.WG_ID_WIDTH-1:0]  wid;         // Worldguard ID
   };
 
   // data is misaligned
@@ -246,6 +249,17 @@ module load_store_unit
   // MMU e.g.: TLBs/PTW
   // -------------------
 
+  logic             [CVA6Cfg.VMID_WIDTH-1:0] vmid_to_be_flushed;
+  logic                                      flush_tlb;
+
+  // If we need both flushes, prioritize worldguard, as it will flush the entire cache anyway
+  always_comb begin
+    flush_tlb = flush_tlb_i || flush_tlb_wg_i;
+
+    asid_to_be_flushed[0] = flush_tlb_wg_i? '0 : asid_to_be_flushed_i;
+    vmid_to_be_flushed = flush_tlb_wg_i? '0 : vmid_to_be_flushed_i;
+  end
+
   if (CVA6Cfg.MmuPresent) begin : gen_mmu
     localparam HYP_EXT = CVA6Cfg.RVH ? 1 : 0;
 
@@ -299,9 +313,9 @@ module load_store_unit
         .hgatp_ppn_i,
         .asid_i,
         .vs_asid_i,
-        .asid_to_be_flushed_i,
+        .asid_to_be_flushed_i(asid_to_be_flushed[0]),
         .vmid_i,
-        .vmid_to_be_flushed_i,
+        .vmid_to_be_flushed_i(vmid_to_be_flushed),
         .vaddr_to_be_flushed_i,
         .gpaddr_to_be_flushed_i,
         .flush_tlb_i,
@@ -756,7 +770,7 @@ module load_store_unit
   };
 
   assign lsu_req_wid.lsu_req = lsu_req;
-  assign lsu_req_wid.wid = 'h1;
+  assign lsu_req_wid.wid = ld_st_wid_i;
 
   lsu_bypass #(
       .CVA6Cfg(CVA6Cfg),

@@ -93,7 +93,7 @@ module wt_cache_subsystem
     logic nc;  // noncacheable
     logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // threadi id (used as transaction id in Ariane)
     ariane_pkg::amo_t amo_op;  // amo opcode
-    logic [CVA6Cfg.WID_WIDTH-1:0] wid;
+    // logic [CVA6Cfg.WG_ID_WIDTH-1:0] wid;
   };
 
   localparam type dcache_rtrn_t = struct packed {
@@ -102,7 +102,7 @@ module wt_cache_subsystem
     logic [CVA6Cfg.DCACHE_USER_LINE_WIDTH-1:0] user;  // user bits
     dcache_inval_t inv;  // invalidation vector
     logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // threadi id (used as transaction id in Ariane)
-    logic [CVA6Cfg.WID_WIDTH-1:0] wid;
+    logic [CVA6Cfg.WG_ID_WIDTH-1:0] wid;
   };
 
   logic icache_adapter_data_req, adapter_icache_data_ack, adapter_icache_rtrn_vld;

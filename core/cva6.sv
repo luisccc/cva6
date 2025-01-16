@@ -68,6 +68,7 @@ module cva6
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
       logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
+      logic [CVA6Cfg.WG_ID_WIDTH-1:0] wid;  // Worldguard ID
     },
     localparam type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
@@ -174,6 +175,7 @@ module cva6
       logic [CVA6Cfg.PLEN-1:0] paddr;  // physical address
       logic nc;  // noncacheable
       logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // threadi id (used as transaction id in Ariane)
+      // logic [  CVA6Cfg.WG_ID_WIDTH-1:0] wid;  // Worldguard ID
     },
     localparam type icache_rtrn_t = struct packed {
       wt_cache_pkg::icache_in_t rtype;  // see definitions above
@@ -201,7 +203,7 @@ module cva6
       logic [CVA6Cfg.DcacheIdWidth-1:0]      data_id;
       logic                                  kill_req;
       logic                                  tag_valid;
-      logic [CVA6Cfg.WID_WIDTH-1:0]          wid;  // Worldguard ID
+      logic [CVA6Cfg.WG_ID_WIDTH-1:0]        wid;  // Worldguard ID
     },
 
     localparam type dcache_req_o_t = struct packed {
@@ -363,6 +365,7 @@ module cva6
   logic                                         eret;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic             [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
+  logic             [  CVA6Cfg.WG_ID_WIDTH-1:0] instr_wid;
 
   localparam NumPorts = 4;
 
@@ -533,6 +536,7 @@ module cva6
   logic en_ld_st_translation_csr_ex;
   logic en_ld_st_g_translation_csr_ex;
   riscv::priv_lvl_t ld_st_priv_lvl_csr_ex;
+  logic [CVA6Cfg.WG_ID_WIDTH-1:0] ld_st_wid_ex;
   logic ld_st_v_csr_ex;
   logic sum_csr_ex;
   logic vs_sum_csr_ex;
@@ -564,6 +568,7 @@ module cva6
   riscv::pmpcfg_t [CVA6Cfg.NrPMPEntries-1:0] pmpcfg;
   logic [CVA6Cfg.NrPMPEntries-1:0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
+  logic flush_tlb_wg_csr_ex;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -663,7 +668,8 @@ module cva6
       .icache_dreq_i      (icache_dreq_cache_if),
       .fetch_entry_o      (fetch_entry_if_id),
       .fetch_entry_valid_o(fetch_valid_if_id),
-      .fetch_entry_ready_i(fetch_ready_id_if)
+      .fetch_entry_ready_i(fetch_ready_id_if),
+      .instr_wid_i        (instr_wid)
   );
 
   // ---------
@@ -993,9 +999,11 @@ module cva6
       .flush_tlb_i             (flush_tlb_ctrl_ex),
       .flush_tlb_vvma_i        (flush_tlb_vvma_ctrl_ex),
       .flush_tlb_gvma_i        (flush_tlb_gvma_ctrl_ex),
+      .flush_tlb_wg_i          (flush_tlb_wg_csr_ex),
       .priv_lvl_i              (priv_lvl),                       // from CSR
       .v_i                     (v),                              // from CSR
       .ld_st_priv_lvl_i        (ld_st_priv_lvl_csr_ex),          // from CSR
+      .ld_st_wid_i             (ld_st_wid_ex),
       .ld_st_v_i               (ld_st_v_csr_ex),                 // from CSR
       .sum_i                   (sum_csr_ex),                     // from CSR
       .vs_sum_i                (vs_sum_csr_ex),                  // from CSR
@@ -1107,6 +1115,7 @@ module cva6
       .eret_o                  (eret),
       .trap_vector_base_o      (trap_vector_base_commit_pcgen),
       .priv_lvl_o              (priv_lvl),
+      .instr_wid_o             (instr_wid),
       .v_o                     (v),
       .acc_fflags_ex_i         (acc_resp_fflags),
       .acc_fflags_ex_valid_i   (acc_resp_fflags_valid),
@@ -1122,6 +1131,7 @@ module cva6
       .en_ld_st_translation_o  (en_ld_st_translation_csr_ex),
       .en_ld_st_g_translation_o(en_ld_st_g_translation_csr_ex),
       .ld_st_priv_lvl_o        (ld_st_priv_lvl_csr_ex),
+      .ld_st_wid_o             (ld_st_wid_ex),
       .ld_st_v_o               (ld_st_v_csr_ex),
       .csr_hs_ld_st_inst_i     (csr_hs_ld_st_inst_ex),
       .sum_o                   (sum_csr_ex),
@@ -1156,7 +1166,8 @@ module cva6
       .pmpaddr_o               (pmpaddr),
       .mcountinhibit_o         (mcountinhibit_csr_perf),
       //RVFI
-      .rvfi_csr_o              (rvfi_csr)
+      .rvfi_csr_o              (rvfi_csr),
+      .flush_tlb_wg_o          (flush_tlb_wg_csr_ex)
   );
 
   // ------------------------
@@ -1198,7 +1209,7 @@ module cva6
         .l1_icache_access_i (icache_dreq_if_cache),
         .l1_dcache_access_i (dcache_req_ports_ex_cache),
         .miss_vld_bits_i    (miss_vld_bits),
-        .i_tlb_flush_i      (flush_tlb_ctrl_ex),
+        .i_tlb_flush_i      (flush_tlb_ctrl_ex | flush_tlb_wg_csr_ex),
         .stall_issue_i      (stall_issue),
         .mcountinhibit_i    (mcountinhibit_csr_perf)
     );

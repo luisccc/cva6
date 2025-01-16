@@ -45,7 +45,7 @@ module store_buffer
     input logic [CVA6Cfg.XLEN-1:0] data_i,  // data which is placed in the queue
     input logic [(CVA6Cfg.XLEN/8)-1:0] be_i,  // byte enable in
     input logic [1:0] data_size_i,  // type of request we are making (e.g.: bytes to write)
-    input logic [CVA6Cfg.WID_WIDTH-1:0]  wid_i,         // Worldguard ID
+    input logic [CVA6Cfg.WG_ID_WIDTH-1:0]  wid_i,         // Worldguard ID
 
     // D$ interface
     input  dcache_req_o_t req_port_i,
@@ -61,7 +61,7 @@ module store_buffer
     logic [(CVA6Cfg.XLEN/8)-1:0] be;
     logic [1:0] data_size;
     logic valid;  // this entry is valid, we need this for checking if the address offset matches
-    logic [CVA6Cfg.WID_WIDTH-1:0] wid;
+    logic [CVA6Cfg.WG_ID_WIDTH-1:0] wid;
   }
       speculative_queue_n[DEPTH_SPEC-1:0],
       speculative_queue_q[DEPTH_SPEC-1:0],

@@ -40,7 +40,7 @@ module wt_dcache_ctrl
     output logic miss_nc_o,  // request to I/O space
     output logic [2:0] miss_size_o,  // 00: 1byte, 01: 2byte, 10: 4byte, 11: 8byte, 111: cacheline
     output logic [CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_o,  // set to constant ID
-    output logic [CVA6Cfg.WID_WIDTH-1:0] miss_wid_o,  // Worldguard ID
+    output logic [CVA6Cfg.WG_ID_WIDTH-1:0] miss_wid_o,  // Worldguard ID
     input logic miss_replay_i,  // request collided with pending miss - have to replay the request
     input  logic                            miss_rtrn_vld_i, // signals that the miss has been served, asserted in the same cycle as when the data returns from memory
     // used to detect readout mux collisions
@@ -49,7 +49,7 @@ module wt_dcache_ctrl
     output logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_o,  // tag in - comes one cycle later
     output logic [DCACHE_CL_IDX_WIDTH-1:0] rd_idx_o,
     output logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_o,
-    output logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid_o,  // Worldguard ID
+    output logic [CVA6Cfg.WG_ID_WIDTH-1:0] rd_wid_o,  // Worldguard ID
     output logic rd_req_o,  // read the word at offset off_i[:3] in all ways
     output logic rd_tag_only_o,  // set to zero here
     input logic rd_ack_i,
@@ -106,6 +106,7 @@ module wt_dcache_ctrl
   assign miss_vld_bits_o = vld_data_q;
   assign miss_paddr_o = {address_tag_q, address_idx_q, address_off_q};
   assign miss_size_o = (miss_nc_o) ? {1'b0, data_size_q} : 3'b111;
+  assign miss_wid_o = wid_q;
 
   // noncacheable if request goes to I/O space, or if cache is disabled
   assign miss_nc_o = (~cache_en_i) | (~config_pkg::is_inside_cacheable_regions(
@@ -264,7 +265,7 @@ module wt_dcache_ctrl
       address_tag_q <= '0;
       address_idx_q <= '0;
       address_off_q <= '0;
-      wid_q         <= CVA6Cfg.WID_RST_VALUE;
+      wid_q         <= CVA6Cfg.WG_ID_RST_VALUE;
       id_q          <= '0;
       vld_data_q    <= '0;
       data_size_q   <= '0;

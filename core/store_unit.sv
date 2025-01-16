@@ -38,7 +38,7 @@ module store_unit
     input logic valid_i,
     // Data input - ISSUE_STAGE
     input lsu_ctrl_t lsu_ctrl_i,
-    input logic [CVA6Cfg.WID_WIDTH-1:0]  wid_i,         // Worldguard ID
+    input logic [CVA6Cfg.WG_ID_WIDTH-1:0]  wid_i,         // Worldguard ID
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic pop_st_o,
     // Instruction commit - TO_BE_COMPLETED
@@ -135,7 +135,7 @@ module store_unit
   logic [CVA6Cfg.XLEN-1:0] st_data_n, st_data_q;
   logic [(CVA6Cfg.XLEN/8)-1:0] st_be_n, st_be_q;
   logic [1:0] st_data_size_n, st_data_size_q;
-  logic [CVA6Cfg.WID_WIDTH-1:0] st_wid_n, st_wid_q;
+  logic [CVA6Cfg.WG_ID_WIDTH-1:0] st_wid_n, st_wid_q;
   amo_t amo_op_d, amo_op_q;
 
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_n, trans_id_q;
@@ -354,7 +354,7 @@ module store_unit
       state_q        <= IDLE;
       st_be_q        <= '0;
       st_data_q      <= '0;
-      st_wid_q       <= CVA6Cfg.WID_RST_VALUE;
+      st_wid_q       <= CVA6Cfg.WG_ID_RST_VALUE;
       st_data_size_q <= '0;
       trans_id_q     <= '0;
       amo_op_q       <= AMO_NONE;

@@ -70,6 +70,8 @@ module csr_regfile
     output logic [CVA6Cfg.VLEN-1:0] trap_vector_base_o,
     // Current privilege level the CPU is in - EX_STAGE
     output riscv::priv_lvl_t priv_lvl_o,
+    // Worldguard ID
+    output logic [CVA6Cfg.WG_ID_WIDTH-1:0] instr_wid_o,
     // Current virtualization mode state the CPU is in - EX_STAGE
     output logic v_o,
     // Imprecise FP exception from the accelerator (fcsr.fflags format) - ACC_DISPATCHER
@@ -100,6 +102,8 @@ module csr_regfile
     output logic en_ld_st_g_translation_o,
     // Privilege level at which load and stores should happen - EX_STAGE
     output riscv::priv_lvl_t ld_st_priv_lvl_o,
+    // Worldguard ID
+    output logic [CVA6Cfg.WG_ID_WIDTH-1:0]  ld_st_wid_o,
     // Virtualization mode at which load and stores should happen - EX_STAGE
     output logic ld_st_v_o,
     // Current instruction is a Hypervisor Load/Store Instruction - EX_STAGE
@@ -167,8 +171,37 @@ module csr_regfile
     // TO_BE_COMPLETED - PERF_COUNTERS
     output logic [31:0] mcountinhibit_o,
     // RVFI
-    output rvfi_probes_csr_t rvfi_csr_o
+    output rvfi_probes_csr_t rvfi_csr_o,
+    // Worldguard
+    output flush_tlb_wg_o
 );
+
+  function automatic void wg_verify_valid(
+    input logic [CVA6Cfg.XLEN-1:0] list,
+    input logic [CVA6Cfg.XLEN-1:0] index,
+    output logic [CVA6Cfg.XLEN-1:0] valid_id,
+    output logic error
+  );
+    int i;
+    error = 1'b0;
+
+    if (!list[index]) begin // If it is not a valid ID
+      for (i = 0; i < CVA6Cfg.XLEN; i++) begin
+        if (list[i]) begin
+          valid_id = i;
+          break; // Exit the loop as soon as a valid ID is found
+        end
+      end
+      // Check if the loop completed without finding a valid ID
+      if (i == CVA6Cfg.XLEN) begin
+        error = 1'b1;
+      end
+    end
+    else begin
+      valid_id = index;
+    end
+  endfunction : wg_verify_valid
+
 
   localparam logic [63:0] SMODE_STATUS_READ_MASK = ariane_pkg::smode_status_read_mask(CVA6Cfg);
   localparam logic [63:0] HS_DELEG_INTERRUPTS = {
@@ -1013,6 +1046,7 @@ module csr_regfile
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
 
+    flush_tlb_wg_o = 1'b0;
     // WorldGuard
     if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) begin
       mlwid_d = mlwid_q;
@@ -1744,15 +1778,40 @@ module csr_regfile
 
         //WorldGuard
         riscv::CSR_MLWID: begin
-          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) mlwid_d = csr_wdata;
+          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn && csr_wdata < CVA6Cfg.XLEN) begin
+            wg_verify_valid(CVA6Cfg.WG_MWID_LIST, csr_wdata, mlwid_d, update_access_exception);
+
+            if(update_access_exception) // If error, reset the value
+              mlwid_d = CVA6Cfg.WG_ID_RST_VALUE;
+
+            if(mlwid_d != mlwid_q)
+              flush_tlb_wg_o = 1'b1;
+          end
           else update_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) mwiddeleg_d = csr_wdata;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
+            // Update MWIDDELEG according to MWIDLIST
+            mwiddeleg_d = csr_wdata & CVA6Cfg.WG_MWID_LIST[CVA6Cfg.XLEN-1:0];
+
+            // We may need to update SLWID, check that
+            // If it is 0, slwid is not used
+            if(mwiddeleg_d != 0)
+              wg_verify_valid(mwiddeleg_d, slwid_q, slwid_d, update_access_exception);
+
+            if(slwid_d != slwid_q)
+              flush_tlb_wg_o = 1'b1;
+          end
           else update_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) slwid_d = csr_wdata;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S 
+              && csr_wdata < CVA6Cfg.XLEN && mwiddeleg_q != 0) begin
+            wg_verify_valid(mwiddeleg_q, csr_wdata, slwid_d, update_access_exception);
+
+            if(slwid_d != slwid_q)
+              flush_tlb_wg_o = 1'b1;
+          end
           else update_access_exception = 1'b1;
         end
 
@@ -2492,6 +2551,34 @@ module csr_regfile
   // in debug mode we execute with privilege level M
   assign priv_lvl_o = (CVA6Cfg.DebugEn && debug_mode_q) ? riscv::PRIV_LVL_M : priv_lvl_q;
   assign v_o = CVA6Cfg.RVH ? v_q : 1'b0;
+  // Worlguard ID propagation
+  always_comb begin
+    ld_st_wid_o = CVA6Cfg.WG_ID_RST_VALUE;
+
+    // If SMWG is enabled
+    if(CVA6Cfg.WgSMWGEn && CVA6Cfg.RVU && ld_st_priv_lvl_o != riscv::PRIV_LVL_M) begin
+      if(ld_st_priv_lvl_o == riscv::PRIV_LVL_S && !ld_st_v_o) // If we are on S mode
+        ld_st_wid_o = mlwid_q;
+      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) // If SSWG is enabled
+        ld_st_wid_o = slwid_q;
+      else
+        ld_st_wid_o = mlwid_q;
+    end
+  end
+
+  always_comb begin
+    instr_wid_o = CVA6Cfg.WG_ID_RST_VALUE;
+
+    // If SMWG is enabled
+    if(CVA6Cfg.WgSMWGEn && CVA6Cfg.RVU && priv_lvl_o != riscv::PRIV_LVL_M) begin
+      if(priv_lvl_o == riscv::PRIV_LVL_S && !v_o) // If we are on S mode
+        instr_wid_o = mlwid_q;
+      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) // If SSWG is enabled
+        instr_wid_o = slwid_q;
+      else
+        instr_wid_o = mlwid_q;
+    end
+  end
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
   assign frm_o = fcsr_q.frm;
@@ -2644,10 +2731,10 @@ module csr_regfile
 
       // Worldguard
       if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn) begin
-        mlwid_q <= '0;
+        mlwid_q <= CVA6Cfg.WG_ID_RST_VALUE;
       end
       if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
-        slwid_q <= '0;
+        slwid_q <= CVA6Cfg.WG_ID_RST_VALUE;
         mwiddeleg_q <= '0;
       end
     end else begin

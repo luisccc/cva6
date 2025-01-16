@@ -105,9 +105,11 @@ module cva6_icache
   logic                                cl_we;  // write enable to memory array
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] cl_req;  // request to memory array
   logic [     ICACHE_CL_IDX_WIDTH-1:0] cl_index;  // this is a cache-line index, to memory array
+  logic [     CVA6Cfg.WG_ID_WIDTH-1:0] cl_wid_d, cl_wid_q;  // Worldguard ID
   logic [ICACHE_OFFSET_WIDTH-1:0] cl_offset_d, cl_offset_q;  // offset in cache line
   logic [CVA6Cfg.ICACHE_TAG_WIDTH-1:0] cl_tag_d, cl_tag_q;  // this is the cache tag
   logic [CVA6Cfg.ICACHE_TAG_WIDTH-1:0]          cl_tag_rdata [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the tags coming from the tagmem
+  logic [CVA6Cfg.WG_ID_WIDTH-1:0]               cl_wid_rdata [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the WIDS coming from the widmem
   logic [CVA6Cfg.ICACHE_LINE_WIDTH-1:0]         cl_rdata     [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the cachelines coming from the cache
   logic [CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0]    cl_ruser[CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the cachelines coming from the user cache
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.FETCH_WIDTH-1:0] cl_sel;  // selected word from each cacheline
@@ -152,6 +154,8 @@ module cva6_icache
   // split virtual address into index and offset to address cache arrays
   assign cl_index = vaddr_d[CVA6Cfg.ICACHE_INDEX_WIDTH-1:ICACHE_OFFSET_WIDTH];
 
+  // Worldguard ID
+  assign cl_wid_d = (dreq_o.ready & dreq_i.req) ? dreq_i.wid : cl_wid_q;
 
   if (CVA6Cfg.NOCType == config_pkg::NOC_TYPE_AXI4_ATOP) begin : gen_axi_offset
     // if we generate a noncacheable access, the word will be at offset 0 or 4 in the cl coming from memory
@@ -179,6 +183,7 @@ module cva6_icache
   assign mem_data_o.way = repl_way;
   assign dreq_o.vaddr   = vaddr_q;
 
+  // assign mem_data_o.wid = cl_wid_q;
   // invalidations take two cycles
   assign inv_d          = inv_en;
 
@@ -423,8 +428,14 @@ module cva6_icache
 
   logic [CVA6Cfg.ICACHE_SET_ASSOC_WIDTH-1:0] hit_idx;
 
+  logic probe1[CVA6Cfg.ICACHE_SET_ASSOC], probe2[CVA6Cfg.ICACHE_SET_ASSOC];
+
   for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_tag_cmpsel
-    assign cl_hit[i]  = (cl_tag_rdata[i] == cl_tag_d) & vld_rdata[i];
+    assign cl_hit[i]  = (cl_tag_rdata[i] == cl_tag_d) & vld_rdata[i] & (cl_wid_rdata[i] == cl_wid_d);
+
+    assign probe1[i] = (cl_tag_rdata[i] == cl_tag_d) & vld_rdata[i];
+    assign probe2[i] = cl_wid_rdata[i] == cl_wid_d;
+
     assign cl_sel[i]  = cl_rdata[i][{cl_offset_q, 3'b0}+:CVA6Cfg.FETCH_WIDTH];
     assign cl_user[i] = cl_ruser[i][{cl_offset_q, 3'b0}+:CVA6Cfg.FETCH_USER_WIDTH];
   end
@@ -501,6 +512,26 @@ module cva6_icache
         .ruser_o(cl_ruser[i]),
         .rdata_o(cl_rdata[i])
     );
+
+    // WID RAM
+    sram_cache #(
+        // tag + valid bit
+        .DATA_WIDTH (CVA6Cfg.WG_ID_WIDTH),
+        .BYTE_ACCESS(0),
+        .TECHNO_CUT (CVA6Cfg.TechnoCut),
+        .NUM_WORDS  (CVA6Cfg.DCACHE_NUM_WORDS)
+    ) i_wid_sram (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .req_i  (vld_req[i]),
+        .we_i   (vld_we),
+        .addr_i (vld_addr),
+        .wuser_i('0),
+        .wdata_i({cl_wid_q}),
+        .be_i   ('1),
+        .ruser_o(),
+        .rdata_o(cl_wid_rdata[i])
+    );
   end
 
 
@@ -509,6 +540,7 @@ module cva6_icache
       cl_tag_q      <= '0;
       flush_cnt_q   <= '0;
       vaddr_q       <= '0;
+      cl_wid_q      <= CVA6Cfg.WG_ID_RST_VALUE;
       cmp_en_q      <= '0;
       cache_en_q    <= '0;
       flush_q       <= '0;
@@ -520,6 +552,7 @@ module cva6_icache
       cl_tag_q      <= cl_tag_d;
       flush_cnt_q   <= flush_cnt_d;
       vaddr_q       <= vaddr_d;
+      cl_wid_q      <= cl_wid_d;
       cmp_en_q      <= cmp_en_d;
       cache_en_q    <= cache_en_d;
       flush_q       <= flush_d;

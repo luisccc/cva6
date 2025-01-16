@@ -83,8 +83,9 @@ package build_config_pkg;
     cfg.WgSMWGEn = CVA6Cfg.WgSMWGEn;
     cfg.WgSSWGEn = CVA6Cfg.WgSSWGEn;
 
-    cfg.WID_WIDTH = 4;
-    cfg.WID_RST_VALUE = 0;
+    cfg.WG_ID_WIDTH = 4;
+    cfg.WG_ID_RST_VALUE = 1;
+    cfg.WG_MWID_LIST = 'hF;
 
     cfg.FpPresent = bit'(FpPresent);
     cfg.NSX = bit'(NSX);
