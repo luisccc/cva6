@@ -307,7 +307,7 @@ module wt_dcache_missunit
   assign mem_data_o.size   = (CVA6Cfg.RVA && amo_sel) ? {1'b0, amo_req_i.size} : miss_size_i [miss_port_idx];
   assign mem_data_o.amo_op = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.amo_op : AMO_NONE;
   // TODO: Check the WID for amo accesses
-  // assign mem_data_o.wid = (CVA6Cfg.RVA && amo_sel) ? '0 : miss_wid_i[miss_port_idx];
+  assign mem_data_o.wid = (CVA6Cfg.RVA && amo_sel) ? '0 : miss_wid_i[miss_port_idx];
 
   assign tmp_paddr         = (CVA6Cfg.RVA && amo_sel) ? amo_req_i.operand_a[CVA6Cfg.PLEN-1:0] : miss_paddr_i[miss_port_idx];
   assign mem_data_o.paddr = paddrSizeAlign(tmp_paddr, mem_data_o.size);

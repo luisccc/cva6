@@ -175,7 +175,7 @@ module cva6
       logic [CVA6Cfg.PLEN-1:0] paddr;  // physical address
       logic nc;  // noncacheable
       logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // threadi id (used as transaction id in Ariane)
-      // logic [  CVA6Cfg.WG_ID_WIDTH-1:0] wid;  // Worldguard ID
+      logic [  CVA6Cfg.WG_ID_WIDTH-1:0] wid;  // Worldguard ID
     },
     localparam type icache_rtrn_t = struct packed {
       wt_cache_pkg::icache_in_t rtype;  // see definitions above

@@ -183,7 +183,7 @@ module cva6_icache
   assign mem_data_o.way = repl_way;
   assign dreq_o.vaddr   = vaddr_q;
 
-  // assign mem_data_o.wid = cl_wid_q;
+  assign mem_data_o.wid = cl_wid_q;
   // invalidations take two cycles
   assign inv_d          = inv_en;
 
