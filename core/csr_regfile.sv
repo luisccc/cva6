@@ -331,6 +331,10 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
   logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;
   logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
+  // shwg
+  logic [CVA6Cfg.XLEN-1:0] vslwid_q, vslwid_d;
+  logic [CVA6Cfg.XLEN-1:0] hslwid_q, hslwid_d;
+  logic [CVA6Cfg.XLEN-1:0] hwiddeleg_q, hwiddeleg_d;
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------
@@ -905,10 +909,20 @@ module csr_regfile
           else read_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) csr_rdata = slwid_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) begin
+            if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o) csr_rdata = vslwid_q; // VS-Mode
+            else csr_rdata = slwid_q; // S-Mode
+          end
           else read_access_exception = 1'b1;
         end
-
+        riscv::CSR_HSLWID: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) csr_rdata = hslwid_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEG: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) csr_rdata = hwiddeleg_q;
+          else read_access_exception = 1'b1;
+        end
         default: read_access_exception = 1'b1;
       endcase
     end
@@ -1796,8 +1810,17 @@ module csr_regfile
 
             // We may need to update SLWID, check that
             // If it is 0, slwid is not used
-            if(mwiddeleg_d != 0)
+            if(mwiddeleg_d != 0) begin
               wg_verify_valid(mwiddeleg_d, slwid_q, slwid_d, update_access_exception);
+
+              // We may need to update hwiddeleg, check that
+              // Additionally, we may need to update vslwid
+              if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn) begin
+                hwiddeleg_d = hwiddeleg_q & mwiddeleg_d[CVA6Cfg.XLEN-1:0];
+                if(hwiddeleg_d != 0)
+                  wg_verify_valid(hwiddeleg_d, vslwid_q, vslwid_d, update_access_exception);
+              end
+            end
 
             if(slwid_d != slwid_q)
               flush_tlb_wg_o = 1'b1;
@@ -1806,10 +1829,54 @@ module csr_regfile
         end
         riscv::CSR_SLWID: begin
           if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S 
-              && csr_wdata < CVA6Cfg.XLEN && mwiddeleg_q != 0) begin
-            wg_verify_valid(mwiddeleg_q, csr_wdata, slwid_d, update_access_exception);
+              && csr_wdata < CVA6Cfg.XLEN) begin
 
-            if(slwid_d != slwid_q)
+            // VS access to slwid -> vslwid
+            if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o)begin
+              if (hwiddeleg_q != 0) begin
+                wg_verify_valid(hwiddeleg_q, csr_wdata, vslwid_d, update_access_exception);
+
+                if(vslwid_d != vslwid_q)
+                  flush_tlb_wg_o = 1'b1;
+              end
+              else update_access_exception = 1'b1;
+            end
+            // S access to slwid
+            else begin
+              if (mwiddeleg_q != 0) begin
+                wg_verify_valid(mwiddeleg_q, csr_wdata, slwid_d, update_access_exception);
+
+                if(slwid_d != slwid_q)
+                  flush_tlb_wg_o = 1'b1;
+              end
+              else update_access_exception = 1'b1;
+            end
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_HSLWID: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS && csr_wdata < CVA6Cfg.XLEN) begin
+            wg_verify_valid(mwiddeleg_q, csr_wdata, hslwid_d, update_access_exception);
+
+            if(update_access_exception) // If error, reset the value
+              hslwid_d = CVA6Cfg.WG_ID_RST_VALUE;
+
+            if(hslwid_d != hslwid_q)
+              flush_tlb_wg_o = 1'b1;
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEG: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) begin
+            // Update HWIDDELEG according to mwiddeleg
+            hwiddeleg_d = csr_wdata & mwiddeleg_q[CVA6Cfg.XLEN-1:0];
+
+            // We may need to update VSLWID, check that
+            // If it is 0, slwid is not used
+            if(hwiddeleg_d != 0)
+              wg_verify_valid(hwiddeleg_d, vslwid_q, vslwid_d, update_access_exception);
+
+            if(vslwid_d != vslwid_q)
               flush_tlb_wg_o = 1'b1;
           end
           else update_access_exception = 1'b1;
@@ -2557,11 +2624,20 @@ module csr_regfile
 
     // If SMWG is enabled
     if(CVA6Cfg.WgSMWGEn && CVA6Cfg.RVU && ld_st_priv_lvl_o != riscv::PRIV_LVL_M) begin
-      if(ld_st_priv_lvl_o == riscv::PRIV_LVL_S && !ld_st_v_o) // If we are on S mode
+      if(ld_st_priv_lvl_o == riscv::PRIV_LVL_S && !v_o) // If we are on S/HS mode
         ld_st_wid_o = mlwid_q;
-      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) // If SSWG is enabled
+      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) begin // If SSWG is enabled
         ld_st_wid_o = slwid_q;
-      else
+
+        // V modes with shwg enabled
+        if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o) begin
+          // VS mode
+          if(ld_st_priv_lvl_o == riscv::PRIV_LVL_S) ld_st_wid_o = hslwid_q;
+          // VU mode
+          else if(hwiddeleg_q) ld_st_wid_o = vslwid_q;
+          else ld_st_wid_o = hslwid_q;
+        end
+      end else
         ld_st_wid_o = mlwid_q;
     end
   end
@@ -2571,11 +2647,20 @@ module csr_regfile
 
     // If SMWG is enabled
     if(CVA6Cfg.WgSMWGEn && CVA6Cfg.RVU && priv_lvl_o != riscv::PRIV_LVL_M) begin
-      if(priv_lvl_o == riscv::PRIV_LVL_S && !v_o) // If we are on S mode
+      if(priv_lvl_o == riscv::PRIV_LVL_S && !v_o) // If we are on S/HS mode
         instr_wid_o = mlwid_q;
-      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) // If SSWG is enabled
+      else if(CVA6Cfg.WgSSWGEn && mwiddeleg_q) begin // If SSWG is enabled
         instr_wid_o = slwid_q;
-      else
+
+        // V modes with shwg enabled
+        if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o) begin
+          // VS mode
+          if(priv_lvl_o == riscv::PRIV_LVL_S) instr_wid_o = hslwid_q;
+          // VU mode
+          else if(hwiddeleg_q) instr_wid_o = vslwid_q;
+          else instr_wid_o = hslwid_q;
+        end
+      end else
         instr_wid_o = mlwid_q;
     end
   end
@@ -2737,6 +2822,11 @@ module csr_regfile
         slwid_q <= CVA6Cfg.WG_ID_RST_VALUE;
         mwiddeleg_q <= '0;
       end
+      if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn) begin
+        hslwid_q <= CVA6Cfg.WG_ID_RST_VALUE;
+        vslwid_q <= CVA6Cfg.WG_ID_RST_VALUE;
+        hwiddeleg_q <= '0;
+      end
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -2818,6 +2908,11 @@ module csr_regfile
       if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
         slwid_q <= slwid_d;
         mwiddeleg_q <= mwiddeleg_d;
+      end
+      if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn) begin
+        hslwid_q <= hslwid_d;
+        vslwid_q <= vslwid_d;
+        hwiddeleg_q <= hwiddeleg_d;
       end
     end
   end

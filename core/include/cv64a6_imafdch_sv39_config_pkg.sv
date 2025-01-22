@@ -31,6 +31,7 @@ package cva6_config_pkg;
   // Worldguard
   localparam CVA6ConfigSMWGEn = 1;
   localparam CVA6ConfigSSWGEn = 1;
+  localparam CVA6ConfigSHWGEn = 1;
 
   localparam CVA6ConfigAxiIdWidth = 4;
   localparam CVA6ConfigAxiAddrWidth = 64;
@@ -156,7 +157,8 @@ package cva6_config_pkg;
       NrStorePipeRegs: int'(CVA6ConfigNrStorePipeRegs),
       DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth),
       WgSMWGEn: bit'(CVA6ConfigSMWGEn),
-      WgSSWGEn: bit'(CVA6ConfigSSWGEn)
+      WgSSWGEn: bit'(CVA6ConfigSSWGEn),
+      WgSHWGEn: bit'(CVA6ConfigSHWGEn)
   };
 
 endpackage

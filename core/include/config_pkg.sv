@@ -210,6 +210,7 @@ package config_pkg;
     // Worldguard
     bit                          WgSMWGEn;
     bit                          WgSSWGEn;
+    bit                          WgSHWGEn;
 
     // int unsigned  WG_ID_WIDTH;
     // int unsigned  WG_ID_RST_VALUE;
@@ -370,6 +371,7 @@ package config_pkg;
     // Worldguard
     bit                          WgSMWGEn;
     bit                          WgSSWGEn;
+    bit                          WgSHWGEn;
 
     int unsigned WG_ID_WIDTH;
     int unsigned WG_ID_RST_VALUE;

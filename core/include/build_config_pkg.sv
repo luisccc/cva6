@@ -82,10 +82,11 @@ package build_config_pkg;
     // Worldguard
     cfg.WgSMWGEn = CVA6Cfg.WgSMWGEn;
     cfg.WgSSWGEn = CVA6Cfg.WgSSWGEn;
+    cfg.WgSHWGEn = CVA6Cfg.WgSHWGEn;
 
     cfg.WG_ID_WIDTH = 4;
-    cfg.WG_ID_RST_VALUE = 1;
-    cfg.WG_MWID_LIST = 'hF;
+    cfg.WG_ID_RST_VALUE = 0;
+    cfg.WG_MWID_LIST = 'hFF;
 
     cfg.FpPresent = bit'(FpPresent);
     cfg.NSX = bit'(NSX);
