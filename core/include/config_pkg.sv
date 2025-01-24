@@ -211,10 +211,9 @@ package config_pkg;
     bit                          WgSMWGEn;
     bit                          WgSSWGEn;
     bit                          WgSHWGEn;
+    bit                          WgSLWGEn;
 
-    // int unsigned  WG_ID_WIDTH;
-    // int unsigned  WG_ID_RST_VALUE;
-    //logic [63:0]  MWID_LIST;
+    int unsigned                 WgNWorlds;
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -372,10 +371,12 @@ package config_pkg;
     bit                          WgSMWGEn;
     bit                          WgSSWGEn;
     bit                          WgSHWGEn;
+    bit                          WgSLWGEn;
 
-    int unsigned WG_ID_WIDTH;
-    int unsigned WG_ID_RST_VALUE;
-    logic [63:0] WG_MWID_LIST;
+    int unsigned  WG_N_WORLDS;
+    int unsigned  WG_ID_WIDTH;
+    int unsigned  WG_ID_RST_VALUE;
+    logic [127:0] WG_MWID_LIST;
   } cva6_cfg_t;
 
   /// Empty configuration to sanity check proper parameter passing. Whenever

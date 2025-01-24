@@ -87,6 +87,13 @@ package build_config_pkg;
     cfg.WG_ID_WIDTH = 4;
     cfg.WG_ID_RST_VALUE = 0;
     cfg.WG_MWID_LIST = 'hFF;
+    cfg.WgSHWGEn = CVA6Cfg.WgSHWGEn;
+    cfg.WgSLWGEn = CVA6Cfg.WgSLWGEn;
+
+    cfg.WG_N_WORLDS = CVA6Cfg.WgNWorlds;
+    cfg.WG_ID_WIDTH = CVA6Cfg.WgNWorlds == 1? 1 : $clog2(CVA6Cfg.WgNWorlds);
+    cfg.WG_ID_RST_VALUE = 0;
+    cfg.WG_MWID_LIST = '1;
 
     cfg.FpPresent = bit'(FpPresent);
     cfg.NSX = bit'(NSX);

@@ -32,6 +32,8 @@ package cva6_config_pkg;
   localparam CVA6ConfigSMWGEn = 1;
   localparam CVA6ConfigSSWGEn = 1;
   localparam CVA6ConfigSHWGEn = 1;
+  localparam CVA6ConfigSLWGEn = 1;
+  localparam CVA6ConfigWGWorlds = 128;
 
   localparam CVA6ConfigAxiIdWidth = 4;
   localparam CVA6ConfigAxiAddrWidth = 64;
@@ -158,7 +160,9 @@ package cva6_config_pkg;
       DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth),
       WgSMWGEn: bit'(CVA6ConfigSMWGEn),
       WgSSWGEn: bit'(CVA6ConfigSSWGEn),
-      WgSHWGEn: bit'(CVA6ConfigSHWGEn)
+      WgSHWGEn: bit'(CVA6ConfigSHWGEn),
+      WgSLWGEn: bit'(CVA6ConfigSLWGEn),
+      WgNWorlds: unsigned'(CVA6ConfigWGWorlds)
   };
 
 endpackage

@@ -416,7 +416,7 @@ package riscv;
     CSR_STVAL            = 12'h143,
     CSR_SIP              = 12'h144,
     CSR_SATP             = 12'h180,
-    CSR_SLWID            = 12'h690,  // Worldguard
+    CSR_SLWID            = 12'h190,  // Worldguard
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
     CSR_HEDELEG          = 12'h602,
@@ -437,6 +437,9 @@ package riscv;
     CSR_HTIMEDELTAH      = 12'h615,
     CSR_HSLWID           = 12'h622,   // Worldguard
     CSR_HWIDDELEG        = 12'h623,   // Worldguard
+    CSR_HWIDDELEGH       = 12'h624,
+    CSR_HWIDDELEGH2      = 12'h625,
+    CSR_HWIDDELEGH3      = 12'h626,
     // Machine Mode CSRs
     CSR_MSTATUS          = 12'h300,
     CSR_MISA             = 12'h301,
@@ -487,6 +490,9 @@ package riscv;
     CSR_MENVCFGH         = 12'h31A,
     CSR_MLWID            = 12'h390,   // Worldguard
     CSR_MWIDDELEG        = 12'h748,   // Worldguard
+    CSR_MWIDDELEGH       = 12'h749,
+    CSR_MWIDDELEGH2      = 12'h74A,
+    CSR_MWIDDELEGH3      = 12'h74B,
     CSR_PMPCFG0          = 12'h3A0,
     CSR_PMPCFG1          = 12'h3A1,
     CSR_PMPCFG2          = 12'h3A2,

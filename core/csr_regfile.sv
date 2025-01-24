@@ -177,7 +177,7 @@ module csr_regfile
 );
 
   function automatic void wg_verify_valid(
-    input logic [CVA6Cfg.XLEN-1:0] list,
+    input logic [CVA6Cfg.WG_N_WORLDS - 1:0] list,
     input logic [CVA6Cfg.XLEN-1:0] index,
     output logic [CVA6Cfg.XLEN-1:0] valid_id,
     output logic error
@@ -186,14 +186,14 @@ module csr_regfile
     error = 1'b0;
 
     if (!list[index]) begin // If it is not a valid ID
-      for (i = 0; i < CVA6Cfg.XLEN; i++) begin
+      for (i = 0; i < CVA6Cfg.WG_N_WORLDS; i++) begin
         if (list[i]) begin
           valid_id = i;
           break; // Exit the loop as soon as a valid ID is found
         end
       end
       // Check if the loop completed without finding a valid ID
-      if (i == CVA6Cfg.XLEN) begin
+      if (i == CVA6Cfg.WG_N_WORLDS) begin
         error = 1'b1;
       end
     end
@@ -226,7 +226,7 @@ module csr_regfile
   } hgatp_t;
 
   // internal signal to keep track of access exceptions
-  logic read_access_exception, update_access_exception, privilege_violation;
+  logic read_access_exception, update_access_exception, privilege_violation, wg_update_access_exception;
   logic virtual_read_access_exception, virtual_update_access_exception, virtual_privilege_violation;
   logic csr_we, csr_read;
   logic [CVA6Cfg.XLEN-1:0] csr_wdata, csr_rdata;
@@ -329,12 +329,12 @@ module csr_regfile
 
   // Worldguard CSRs
   logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
-  logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;
+  logic [127:0] mwiddeleg_q, mwiddeleg_d;
   logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
   // shwg
   logic [CVA6Cfg.XLEN-1:0] vslwid_q, vslwid_d;
   logic [CVA6Cfg.XLEN-1:0] hslwid_q, hslwid_d;
-  logic [CVA6Cfg.XLEN-1:0] hwiddeleg_q, hwiddeleg_d;
+  logic [127:0] hwiddeleg_q, hwiddeleg_d;
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------
@@ -905,10 +905,23 @@ module csr_regfile
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin
-          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) csr_rdata = mwiddeleg_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) csr_rdata = mwiddeleg_q[CVA6Cfg.XLEN-1:0];
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && (CVA6Cfg.WgSLWGEn || CVA6Cfg.IS_XLEN64)) csr_rdata = mwiddeleg_q[63:32];
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH2: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && CVA6Cfg.WgSLWGEn) csr_rdata = mwiddeleg_q[CVA6Cfg.XLEN-1 +: 64];
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH3: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && CVA6Cfg.WgSLWGEn) csr_rdata = mwiddeleg_q[127:96];
           else read_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) csr_rdata = slwid_q;
           if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S) begin
             if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o) csr_rdata = vslwid_q; // VS-Mode
             else csr_rdata = slwid_q; // S-Mode
@@ -916,11 +929,26 @@ module csr_regfile
           else read_access_exception = 1'b1;
         end
         riscv::CSR_HSLWID: begin
-          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) csr_rdata = hslwid_q;
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S) csr_rdata = hslwid_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_HWIDDELEG: begin
-          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) csr_rdata = hwiddeleg_q;
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S) csr_rdata = hwiddeleg_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEGH: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S
+                && (CVA6Cfg.WgSLWGEn || CVA6Cfg.IS_XLEN64)) csr_rdata = hwiddeleg_q[63:32];
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEGH2: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S
+                && CVA6Cfg.WgSLWGEn) csr_rdata = hwiddeleg_q[CVA6Cfg.XLEN-1 +: 64];
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEGH3: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S
+                && CVA6Cfg.WgSLWGEn) csr_rdata = hwiddeleg_q[127:96];
           else read_access_exception = 1'b1;
         end
         default: read_access_exception = 1'b1;
@@ -970,6 +998,7 @@ module csr_regfile
     flush_o                         = 1'b0;
     update_access_exception         = 1'b0;
     virtual_update_access_exception = 1'b0;
+    wg_update_access_exception      = 1'b0;
 
     set_debug_pc_o                  = 1'b0;
 
@@ -1068,6 +1097,11 @@ module csr_regfile
     if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
       slwid_d = slwid_q;
       mwiddeleg_d = mwiddeleg_q;
+    end
+    if (CVA6Cfg.RVH && CVA6Cfg.WgSLWGEn) begin
+      vslwid_d = vslwid_q;
+      hslwid_d = hslwid_q;
+      hwiddeleg_d = hwiddeleg_q;
     end
 
     // check for correct access rights and that we are writing
@@ -1792,7 +1826,8 @@ module csr_regfile
 
         //WorldGuard
         riscv::CSR_MLWID: begin
-          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn && csr_wdata < CVA6Cfg.XLEN) begin
+          // TODO: Change length here 
+          if (CVA6Cfg.RVU && CVA6Cfg.WgSMWGEn && csr_wdata < CVA6Cfg.WG_N_WORLDS) begin
             wg_verify_valid(CVA6Cfg.WG_MWID_LIST, csr_wdata, mlwid_d, update_access_exception);
 
             if(update_access_exception) // If error, reset the value
@@ -1803,6 +1838,7 @@ module csr_regfile
           end
           else update_access_exception = 1'b1;
         end
+        // Control logic after endcase as it is shared between all these cases
         riscv::CSR_MWIDDELEG: begin
           if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn) begin
             // Update MWIDDELEG according to MWIDLIST
@@ -1824,12 +1860,38 @@ module csr_regfile
 
             if(slwid_d != slwid_q)
               flush_tlb_wg_o = 1'b1;
+            mwiddeleg_d[CVA6Cfg.XLEN-1:0] = csr_wdata & CVA6Cfg.WG_MWID_LIST[CVA6Cfg.XLEN-1:0];
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH: begin
+          // If rv64 or slwg enabled we can have access to the "high" part of mwiddeleg
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && (CVA6Cfg.IS_XLEN64 || CVA6Cfg.WgSLWGEn)) begin
+            // Update MWIDDELEG according to MWIDLIST
+            mwiddeleg_d[63:32] = csr_wdata & CVA6Cfg.WG_MWID_LIST[63:32];
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH2: begin
+          // If slwg enabled we can have access to the "high" part of mwiddeleg
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && CVA6Cfg.WgSLWGEn) begin
+            // Update MWIDDELEG according to MWIDLIST
+            mwiddeleg_d[CVA6Cfg.XLEN-1 + 64:64] = csr_wdata & CVA6Cfg.WG_MWID_LIST[CVA6Cfg.XLEN-1+64:64];
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEGH3: begin
+          // If slwg enabled we can have access to the "high" part of mwiddeleg
+          if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && CVA6Cfg.WgSLWGEn) begin
+            // Update MWIDDELEG according to MWIDLIST
+            mwiddeleg_d[127:96] = csr_wdata & CVA6Cfg.WG_MWID_LIST[127:96];
           end
           else update_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
           if (CVA6Cfg.RVS && CVA6Cfg.WgSSWGEn && priv_lvl_o == riscv::PRIV_LVL_S 
-              && csr_wdata < CVA6Cfg.XLEN) begin
+              && csr_wdata < CVA6Cfg.XLEN && mwiddeleg_q != 0) begin
+            wg_verify_valid(mwiddeleg_q, csr_wdata, slwid_d, update_access_exception);
 
             // VS access to slwid -> vslwid
             if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && v_o)begin
@@ -1855,36 +1917,77 @@ module csr_regfile
           else update_access_exception = 1'b1;
         end
         riscv::CSR_HSLWID: begin
-          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS && csr_wdata < CVA6Cfg.XLEN) begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S && !v_o
+              && csr_wdata < CVA6Cfg.WG_N_WORLDS) begin
             wg_verify_valid(mwiddeleg_q, csr_wdata, hslwid_d, update_access_exception);
 
             if(update_access_exception) // If error, reset the value
               hslwid_d = CVA6Cfg.WG_ID_RST_VALUE;
-
-            if(hslwid_d != hslwid_q)
-              flush_tlb_wg_o = 1'b1;
           end
           else update_access_exception = 1'b1;
         end
+        // Control logic after endcase as it is shared between all these cases
         riscv::CSR_HWIDDELEG: begin
-          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_HS) begin
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S && !v_o) begin
             // Update HWIDDELEG according to mwiddeleg
-            hwiddeleg_d = csr_wdata & mwiddeleg_q[CVA6Cfg.XLEN-1:0];
-
-            // We may need to update VSLWID, check that
-            // If it is 0, slwid is not used
-            if(hwiddeleg_d != 0)
-              wg_verify_valid(hwiddeleg_d, vslwid_q, vslwid_d, update_access_exception);
-
-            if(vslwid_d != vslwid_q)
-              flush_tlb_wg_o = 1'b1;
+            hwiddeleg_d[CVA6Cfg.XLEN-1:0] = csr_wdata & mwiddeleg_q[CVA6Cfg.XLEN-1:0];
           end
           else update_access_exception = 1'b1;
         end
-
+        riscv::CSR_HWIDDELEGH: begin
+          // If rv64 or slwg enabled we can have access to the "high" part of hwiddeleg
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S && !v_o
+                && (CVA6Cfg.IS_XLEN64 || CVA6Cfg.WgSLWGEn)) begin
+            // Update HWIDDELEG according to mwiddeleg
+            hwiddeleg_d[63:32] = csr_wdata & mwiddeleg_q[63:32];
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEGH2: begin
+          // If slwg enabled we can have access to the "high" part of hwiddeleg
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S && !v_o
+              && CVA6Cfg.WgSLWGEn) begin
+            // Update HWIDDELEG according to mwiddeleg
+            hwiddeleg_d[CVA6Cfg.XLEN-1 + 64:64] = csr_wdata & mwiddeleg_q[CVA6Cfg.XLEN-1+64:64];
+          end
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_HWIDDELEGH3: begin
+          // If slwg enabled we can have access to the "high" part of hwiddeleg
+          if (CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn && priv_lvl_o == riscv::PRIV_LVL_S && !v_o
+              && CVA6Cfg.WgSLWGEn) begin
+            // Update HWIDDELEG according to mwiddeleg
+            hwiddeleg_d[127:96] = csr_wdata & mwiddeleg_q[127:96];
+          end
+          else update_access_exception = 1'b1;
+        end
         default: update_access_exception = 1'b1;
       endcase
     end
+
+    // Worldguard update control - If things are not enabled, this code never executes
+    // We may need to update SLWID, check that
+    if(mwiddeleg_d != mwiddeleg_q) begin
+      wg_verify_valid(mwiddeleg_d, slwid_q, slwid_d, wg_update_access_exception);
+
+      // We may need to update hwiddeleg, check that
+      // Additionally, we may need to update vslwid
+      if(CVA6Cfg.RVH && CVA6Cfg.WgSHWGEn) begin
+        hwiddeleg_d = hwiddeleg_q & mwiddeleg_d;
+        wg_verify_valid(mwiddeleg_d, hslwid_q, hslwid_d, wg_update_access_exception);
+      end
+    end
+
+    // We may need to update VSLWID, check that
+    if(hwiddeleg_d != hwiddeleg_q)
+      wg_verify_valid(hwiddeleg_d, vslwid_q, vslwid_d, wg_update_access_exception);
+
+    // Flush if any of these changed
+    if(slwid_d != slwid_q || vslwid_d != vslwid_q || hslwid_d != hslwid_q)
+      flush_tlb_wg_o = 1'b1;
+
+    // Or the access exceptions
+    update_access_exception = wg_update_access_exception | update_access_exception;
 
     mstatus_d.sxl = riscv::XLEN_64;
     mstatus_d.uxl = riscv::XLEN_64;
