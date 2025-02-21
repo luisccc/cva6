@@ -43,7 +43,7 @@ module spmp_interface #(
 
     // LSU interface
     input logic lsu_valid_i,
-    input logic [CVA6Cfg.PLEN-1:0] lsu_vaddr_i,
+    input logic [CVA6Cfg.VLEN-1:0] lsu_vaddr_i,
     input logic [31:0] lsu_tinst_i,
     input logic lsu_is_store_i,
     input exception_t misaligned_ex_i,
