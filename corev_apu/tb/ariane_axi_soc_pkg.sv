@@ -15,6 +15,8 @@
  * Description: Contains Ariane's AXI ports on SoC, does not contain user ports
  */
 
+ /*verilator tracing_off*/
+
 package ariane_axi_soc;
 
     localparam UserWidth = ariane_axi::UserWidth;
@@ -100,3 +102,5 @@ package ariane_axi_soc;
     } resp_slv_t;
 
 endpackage
+
+/*verilator tracing_on*/

@@ -22,6 +22,8 @@
 `include "uvm_macros.svh"
 `endif
 
+/*verilator tracing_off*/
+
 module ariane_testharness #(
   parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(cva6_config_pkg::cva6_cfg),
   //
@@ -617,6 +619,8 @@ module ariane_testharness #(
 
   uart_bus #(.BAUD_RATE(115200), .PARITY_EN(0)) i_uart_bus (.rx(tx), .tx(rx), .rx_en(1'b1));
 
+  /*verilator tracing_on*/
+
   // ---------------
   // Core
   // ---------------
@@ -654,6 +658,8 @@ module ariane_testharness #(
 
   `AXI_ASSIGN_FROM_REQ(slave[0], axi_ariane_req)
   `AXI_ASSIGN_TO_RESP(axi_ariane_resp, slave[0])
+
+  /*verilator tracing_off*/
 
   // -------------
   // Simulation Helper Functions

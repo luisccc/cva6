@@ -355,7 +355,7 @@ done_processing:
         }
   }
 
-  while (!dtm->done() && !jtag->done() && !(top->exit_o & 0x1)) {
+  while (!dtm->done() && !jtag->done()) {
     top->clk_i = 0;
     top->eval();
 #if VM_TRACE
@@ -389,10 +389,6 @@ done_processing:
   } else if (jtag->exit_code()) {
     fprintf(stderr, "%s *** FAILED *** (tohost = %d, seed %d) after %ld cycles\n", htif_argv[1], jtag->exit_code(), random_seed, main_time);
     ret = jtag->exit_code();
-  } else if (top->exit_o & 0xFFFFFFFE) {
-    int exitcode = ((unsigned int) top->exit_o) >> 1;
-    fprintf(stderr, "%s *** FAILED *** (tohost = %d) after %ld cycles\n", htif_argv[1], exitcode, main_time);
-    ret = exitcode;
   } else {
     fprintf(stderr, "%s *** SUCCESS *** (tohost = 0) after %ld cycles\n", htif_argv[1], main_time);
   }

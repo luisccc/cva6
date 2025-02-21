@@ -20,6 +20,8 @@
 `include "define.tmp.h"
 `endif
 
+/*verilator tracing_off*/
+
 package wt_cache_pkg;
 
   // these parames need to coincide with the
@@ -152,3 +154,5 @@ package wt_cache_pkg;
   endfunction : toSize32
 
 endpackage
+
+/*verilator tracing_on*/

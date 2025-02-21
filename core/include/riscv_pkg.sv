@@ -15,6 +15,8 @@
  * Description: Common RISC-V definitions.
  */
 
+ /*verilator tracing_off*/
+
 package riscv;
 
   // ----------------------
@@ -1177,3 +1179,5 @@ package riscv;
   // pragma translate_on
 
 endpackage
+
+/*verilator tracing_off*/

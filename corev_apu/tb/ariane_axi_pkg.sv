@@ -15,6 +15,8 @@
  * Description: Contains Ariane's AXI ports, does not contain user ports
  */
 
+ /*verilator tracing_off*/
+
 package ariane_axi;
 
     localparam IdWidth   = cva6_config_pkg::CVA6ConfigAxiIdWidth; // Recommended by AXI standard
@@ -107,3 +109,5 @@ package ariane_axi;
     } resp_t;
 
 endpackage
+
+/*verilator tracing_on*/

@@ -7,7 +7,7 @@
 //
 // Original Author: Guillaume Chauvon (guillaume.chauvon@thalesgroup.com)
 
-
+/*verilator tracing_off*/
 
 package cvxif_instr_pkg;
 
@@ -149,3 +149,5 @@ package cvxif_instr_pkg;
   };
 
 endpackage
+
+/*verilator tracing_on*/

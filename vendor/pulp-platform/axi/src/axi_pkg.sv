@@ -16,6 +16,8 @@
 // - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 // - Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 
+/*verilator tracing_off*/
+
 //! AXI Package
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package axi_pkg;
@@ -421,3 +423,5 @@ package axi_pkg;
     logic [31:0] end_addr;
   } xbar_rule_32_t;
 endpackage
+
+/*verilator tracing_on*/

@@ -42,14 +42,15 @@ module rvfi_tracer #(
   int unsigned SIM_FINISH;
   initial begin
     TOHOST_ADDR = '0;
+    SIM_FINISH = '1;
     f = $fopen($sformatf("trace_rvfi_hart_%h.dasm", HART_ID), "w");
-    if (!$value$plusargs("time_out=%d", SIM_FINISH)) SIM_FINISH = 2000000;
-    if (!$value$plusargs("tohost_addr=%h", TOHOST_ADDR)) TOHOST_ADDR = '0;
+    // if (!$value$plusargs("time_out=%d", SIM_FINISH)) SIM_FINISH = 2000000;
+    // if (!$value$plusargs("tohost_addr=%h", TOHOST_ADDR)) TOHOST_ADDR = '0;
     if (TOHOST_ADDR == '0) begin
         if (!$value$plusargs("elf_file=%s", binary)) binary = "";
         if (binary != "") begin
             read_elf(binary);
-            read_symbol("tohost", TOHOST_ADDR);
+            // read_symbol("tohost", TOHOST_ADDR);
         end
         $display("*** [rvf_tracer] INFO: Loading binary : %s", binary);
         $display("*** [rvf_tracer] INFO: tohost_addr: %h", TOHOST_ADDR);

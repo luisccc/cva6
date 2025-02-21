@@ -23,6 +23,8 @@
 `include "l15.tmp.h"
 `endif
 
+/*verilator tracing_off*/
+
 /// This package contains `functions` and global defines for CVA6.
 /// *Note*: There are some parameters here as well which will eventually be
 /// moved out to favour a fully parameterizable core.
@@ -810,3 +812,5 @@ package ariane_pkg;
   endfunction : make_gppn
 
 endpackage
+
+/*verilator tracing_on*/

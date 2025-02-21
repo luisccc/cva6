@@ -10,6 +10,9 @@
 //
 // Author: Florian Zaruba, ETH Zurich
 // Description: Contains SoC information as constants
+
+/*verilator tracing_off*/
+
 package ariane_soc;
   // M-Mode Hart, S-Mode Hart
   localparam int unsigned NumTargets = 2;
@@ -70,3 +73,5 @@ package ariane_soc;
   localparam logic [NrRegion-1:0][NB_PERIPHERALS-1:0] ValidRule = {{NrRegion * NB_PERIPHERALS}{1'b1}};
 
 endpackage
+
+/*verilator tracing_on*/
