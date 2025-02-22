@@ -226,6 +226,7 @@ module load_store_unit
   exception_t                               pmp_exception;
   icache_areq_t                             pmp_icache_areq_i;
   logic                                     pmp_translation_valid;
+  logic                                     pmp_is_store;
   logic                                     dtlb_hit;
   logic         [         CVA6Cfg.PPNW-1:0] dtlb_ppn;
 
@@ -288,6 +289,7 @@ module load_store_unit
         .lsu_dtlb_ppn_o(dtlb_ppn),  // send in the same cycle as the request
 
         .lsu_valid_o    (pmp_translation_valid),
+        .lsu_is_store_o (pmp_is_store),
         .lsu_paddr_o    (lsu_paddr),
         .lsu_exception_o(pmp_exception),
 
@@ -363,6 +365,7 @@ module load_store_unit
         .misaligned_ex_i  (misaligned_exception),
 
         .lsu_valid_o      (pmp_translation_valid),
+        .lsu_is_store_o   (pmp_is_store),
         .lsu_paddr_o      (lsu_paddr),
         .lsu_exception_o  (pmp_exception),
 
@@ -392,6 +395,7 @@ module load_store_unit
           lsu_paddr <= '0;
           pmp_exception <= '0;
           pmp_translation_valid <= 1'b0;
+          pmp_is_store <= 1'b0;
         end else begin
           if (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) begin : gen_virtual_physical_address_lsu
             lsu_paddr <= mmu_vaddr[CVA6Cfg.PLEN-1:0];
@@ -400,6 +404,7 @@ module load_store_unit
           end
           pmp_exception <= misaligned_exception;
           pmp_translation_valid <= translation_req;
+          pmp_is_store <= st_translation_req;
         end
       end
     end : no_spmp
@@ -440,7 +445,7 @@ module load_store_unit
       .lsu_paddr_i         (lsu_paddr),
       .lsu_vaddr_i         (mmu_vaddr),
       .lsu_exception_i     (pmp_exception),
-      .lsu_is_store_i      (st_translation_req),
+      .lsu_is_store_i      (pmp_is_store),
       .lsu_valid_o         (translation_valid),
       .lsu_paddr_o         (mmu_paddr),
       .lsu_exception_o     (mmu_exception),

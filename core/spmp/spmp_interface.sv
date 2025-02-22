@@ -49,6 +49,7 @@ module spmp_interface #(
     input exception_t misaligned_ex_i,
 
     output logic lsu_valid_o,
+    output logic lsu_is_store_o,
     output logic [CVA6Cfg.PLEN-1:0] lsu_paddr_o,
     output exception_t lsu_exception_o,
 
@@ -114,7 +115,7 @@ module spmp_interface #(
         st_req_d        = 1'b0;
 
         /*** IF request ***/
-        if (if_req_i.fetch_req) begin
+        if (if_req_i.fetch_req && !if_req_q) begin
             if_req_d        = 1'b1;
         end
 
@@ -150,6 +151,7 @@ module spmp_interface #(
 
         // LSU
         lsu_valid_o     = (ld_req_q | st_req_q);
+        lsu_is_store_o  = st_req_q;
         lsu_paddr_o     = lsu_req_addr_q;
         lsu_exception_o = misaligned_ex_q;
         lsu_ex_addr     = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 

@@ -350,6 +350,8 @@ module cva6
       HS_EXT: (1 << (CVA6Cfg.XLEN - 1)) | CVA6Cfg.XLEN'(riscv::IRQ_HS_EXT)
   };
 
+  /*verilator tracing_off*/
+
   // ------------------------------------------
   // Global Signals
   // Signals connecting more than one module
@@ -885,6 +887,8 @@ module cva6
       .rvfi_commit_pointer_o(rvfi_commit_pointer)
   );
 
+  /*verilator tracing_on*/
+
   // ---------
   // EX
   // ---------
@@ -1039,6 +1043,8 @@ module cva6
   // used e.g. for fence instructions.
   assign no_st_pending_commit = no_st_pending_ex & dcache_commit_wbuffer_empty;
 
+  /*verilator tracing_off*/
+
   commit_stage #(
       .CVA6Cfg(CVA6Cfg),
       .exception_t(exception_t),
@@ -1081,6 +1087,8 @@ module cva6
   );
 
   assign commit_ack = commit_macro_ack & ~commit_drop_id_commit;
+
+  /*verilator tracing_on*/
 
   // ---------
   // CSR
@@ -1173,6 +1181,8 @@ module cva6
       //RVFI
       .rvfi_csr_o              (rvfi_csr)
   );
+
+  /*verilator tracing_off*/
 
   // ------------------------
   // Performance Counters

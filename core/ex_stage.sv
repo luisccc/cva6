@@ -243,6 +243,8 @@ module ex_stage
     output [CVA6Cfg.PLEN-1:0] rvfi_mem_paddr_o
 );
 
+  /*verilator tracing_off*/
+
   // -------------------------
   // Fixed Latency Units
   // -------------------------
@@ -511,6 +513,8 @@ module ex_stage
     end
   end
 
+  /*verilator tracing_on*/
+
   // ----------------
   // Load-Store Unit
   // ----------------
@@ -608,6 +612,8 @@ module ex_stage
       .rvfi_lsu_ctrl_o,
       .rvfi_mem_paddr_o
   );
+
+  /*verilator tracing_off*/
 
   if (CVA6Cfg.CvxifEn) begin : gen_cvxif
     fu_data_t cvxif_data;

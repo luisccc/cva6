@@ -61,6 +61,7 @@ module cva6_mmu
     output logic [CVA6Cfg.PPNW-1:0] lsu_dtlb_ppn_o,  // ppn (send same cycle as hit)
     // Cycle 1
     output logic lsu_valid_o,  // translation is valid
+    output logic lsu_is_store_o,
     output logic [CVA6Cfg.PLEN-1:0] lsu_paddr_o,  // translated address
     output exception_t lsu_exception_o,  // address translation threw an exception
     // General control signals
@@ -511,6 +512,7 @@ module cva6_mmu
     dtlb_is_page_n = dtlb_is_page;
 
     lsu_valid_o = lsu_req_q;
+    lsu_is_store_o = lsu_is_store_q;
     lsu_exception_o = misaligned_ex_i;
 
     // we work with SV39 or SV32, so if VM is enabled, check that all bits [CVA6Cfg.VLEN-1:CVA6Cfg.SV-1] are equal to bit [CVA6Cfg.SV]
