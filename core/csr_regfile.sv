@@ -1500,12 +1500,16 @@ module csr_regfile
         riscv::CSR_VSPMPSWITCH0:
         if (CVA6Cfg.RVH) begin 
           vspmpswitch0_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         riscv::CSR_VSPMPSWITCH1:
         // For RV64, only vspmpswitch0 is used
         if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) begin
           vspmpswitch1_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         // sstatus is a subset of mstatus - mask it accordingly
@@ -1705,12 +1709,16 @@ module csr_regfile
         riscv::CSR_SPMPSWITCH0:
         if (CVA6Cfg.RVS) begin 
           spmpswitch0_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         riscv::CSR_SPMPSWITCH1:
         // For RV64, only spmpswitch0 is used
         if (CVA6Cfg.RVS && (CVA6Cfg.XLEN == 32)) begin 
           spmpswitch1_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         //hypervisor mode registers
