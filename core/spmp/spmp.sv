@@ -28,6 +28,7 @@ module spmp
     input riscv::pmp_access_t access_type_i,
     input riscv::priv_lvl_t priv_lvl_i,
     // CSR data
+    input  logic smaa_i,
     input  logic sum_i,
     input  logic mxr_i,
     input  logic mmu_enabled_i,
@@ -117,18 +118,14 @@ module spmp
                                 3'b001,
                                 3'b101,
                                 3'b100,
-                                3'b011: begin
+                                3'b011,
+                                3'b111: begin
                                     allow_o =   ((priv_lvl_i == riscv::PRIV_LVL_S) & enforce);
                                 end
 
                                 // Reserved encoding
                                 3'b000: begin
                                     allow_o =   1'b0;
-                                end
-
-                                // Shared RO
-                                3'b111: begin
-                                    allow_o =   (access_R);
                                 end
 
                                 // RX for S-mode, X for U-mode
@@ -185,8 +182,10 @@ module spmp
                 // no match
                 if (i == CVA6Cfg.NrSPMPEntries) begin
 
-                    // If no SPMP entry matches, only M-mode and S-mode accesses are allowed
-                    allow_o = (priv_lvl_i == riscv::PRIV_LVL_S);
+                    // If no SPMP entry matches:
+                    // - M-mode accesses are always allowed
+                    // - S-mode accesses are allowed if sseccfg.SMAA = 0
+                    allow_o = (priv_lvl_i == riscv::PRIV_LVL_S) & ~smaa_i;
                 end
             end
         end : spmp_check

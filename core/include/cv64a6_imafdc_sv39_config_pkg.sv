@@ -26,6 +26,7 @@ package cva6_config_pkg;
   localparam CVA6ConfigHExtEn = 0;  // always disabled
   localparam CVA6ConfigBExtEn = 1;
   localparam CVA6ConfigVExtEn = 0;
+  localparam CVA6ConfigCsrIndExtEn = 1;
   localparam CVA6ConfigRVZiCond = 1;
 
   localparam CVA6ConfigAxiIdWidth = 4;
@@ -69,7 +70,10 @@ package cva6_config_pkg;
 
   localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::WT;
 
-  localparam CVA6ConfigMmuPresent = 1;
+  localparam CVA6ConfigMmuPresent = 0;
+
+  localparam CVA6ConfigSpmpPresent = 1;
+  localparam CVA6ConfigNrSPMPEntries = 64;
 
   localparam CVA6ConfigRvfiTrace = 1;
 
@@ -100,6 +104,7 @@ package cva6_config_pkg;
       RVH: bit'(CVA6ConfigHExtEn),
       RVZCB: bit'(CVA6ConfigZcbExtEn),
       RVZCMP: bit'(CVA6ConfigZcmpExtEn),
+      RVCSRIND: bit'(CVA6ConfigCsrIndExtEn),
       XFVec: bit'(CVA6ConfigFVecEn),
       CvxifEn: bit'(CVA6ConfigCvxifEn),
       RVZiCond: bit'(CVA6ConfigRVZiCond),
@@ -123,6 +128,10 @@ package cva6_config_pkg;
       PMPAddrRstVal: {64{64'h0}},
       PMPEntryReadOnly: 64'd0,
       PMPNapotEn: bit'(1),
+      SpmpPresent: bit'(CVA6ConfigSpmpPresent),
+      NrSPMPEntries: unsigned'(CVA6ConfigNrSPMPEntries),
+      SPMPCfgRstVal: {64{64'h0}},
+      SPMPAddrRstVal: {64{64'h0}},
       NOCType: config_pkg::NOC_TYPE_AXI4_ATOP,
       NrNonIdempotentRules: unsigned'(2),
       NonIdempotentAddrBase: 1024'({64'b0, 64'b0}),

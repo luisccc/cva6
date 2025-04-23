@@ -124,6 +124,10 @@ module csr_regfile
     output logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_o,
     // TO_BE_COMPLETED - EX_STAGE
     output logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_o,
+    // Supervisor Security Configuration
+    output logic sseccfg_smaa_o,
+    // Virtual Supervisor Security Configuration
+    output logic vsseccfg_smaa_o,
     // external interrupt in - SUBSYSTEM
     input logic [1:0] irq_i,
     // inter processor interrupt -> connected to machine mode sw - SUBSYSTEM
@@ -170,6 +174,8 @@ module csr_regfile
     output logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_o,
     // SPMP switch 
     output logic [63:0] spmpswitch_o,
+    // hSPMP switch 
+    output logic [63:0] hspmpswitch_o,
     // vSPMP configuration
     output riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_o,
     // vSPMP addresses
@@ -230,6 +236,7 @@ module csr_regfile
   hgatp_t hgatp_q, hgatp_d;
   riscv::dcsr_t dcsr_q, dcsr_d;
   riscv::csr_t csr_addr;
+  riscv::csr_t real_csr_addr;
   riscv::csr_t conv_csr_addr;
   // privilege level register
   riscv::priv_lvl_t priv_lvl_d, priv_lvl_q;
@@ -253,6 +260,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mtval_q, mtval_d;
   logic [CVA6Cfg.XLEN-1:0] mtinst_q, mtinst_d;
   logic [CVA6Cfg.XLEN-1:0] mtval2_q, mtval2_d;
+  logic [CVA6Cfg.XLEN-1:0] miselect_q, miselect_d;
   logic fiom_d, fiom_q;
 
   logic [CVA6Cfg.XLEN-1:0] stvec_q, stvec_d;
@@ -261,6 +269,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] sepc_q, sepc_d;
   logic [CVA6Cfg.XLEN-1:0] scause_q, scause_d;
   logic [CVA6Cfg.XLEN-1:0] stval_q, stval_d;
+  logic [CVA6Cfg.XLEN-1:0] siselect_q, siselect_d;
 
   logic [CVA6Cfg.XLEN-1:0] hedeleg_q, hedeleg_d;
   logic [CVA6Cfg.XLEN-1:0] hideleg_q, hideleg_d;
@@ -274,6 +283,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] vsepc_q, vsepc_d;
   logic [CVA6Cfg.XLEN-1:0] vscause_q, vscause_d;
   logic [CVA6Cfg.XLEN-1:0] vstval_q, vstval_d;
+  logic [CVA6Cfg.XLEN-1:0] vsiselect_q, vsiselect_d;
 
   logic [CVA6Cfg.XLEN-1:0] dcache_q, dcache_d;
   logic [CVA6Cfg.XLEN-1:0] icache_q, icache_d;
@@ -283,6 +293,9 @@ module csr_regfile
 
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
+
+  logic [63:0] sseccfg_q, sseccfg_d;
+  logic [63:0] vsseccfg_q, vsseccfg_d;
 
   riscv::pmpcfg_t [63:0] pmpcfg_q, pmpcfg_d, pmpcfg_next;
   logic [63:0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
@@ -310,6 +323,8 @@ module csr_regfile
   logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_q, spmpaddr_d;
   logic [CVA6Cfg.XLEN-1:0] spmpswitch0_q, spmpswitch0_d;
   logic [CVA6Cfg.XLEN-1:0] spmpswitch1_q, spmpswitch1_d;
+  logic [CVA6Cfg.XLEN-1:0] hspmpswitch0_q, hspmpswitch0_d;
+  logic [CVA6Cfg.XLEN-1:0] hspmpswitch1_q, hspmpswitch1_d;
   riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] vspmpcfg_q, vspmpcfg_d;
   logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_q, vspmpaddr_d;
   logic [CVA6Cfg.XLEN-1:0] vspmpswitch0_q, vspmpswitch0_d;
@@ -319,10 +334,15 @@ module csr_regfile
   // ----------------
   // Assignments
   // ----------------
-  assign csr_addr = riscv::csr_t'(csr_addr_i);
-  assign conv_csr_addr = (CVA6Cfg.RVH) ? riscv::convert_vs_access_csr(
-      (riscv::csr_t'(csr_addr_i)), v_q
-  ) : csr_addr;
+  assign csr_addr = (CVA6Cfg.RVCSRIND) ? 
+                    (riscv::convert_csrind_access(riscv::csr_t'(csr_addr_i), miselect_q, siselect_q, vsiselect_q)) :
+                    (riscv::csr_t'(csr_addr_i));
+  if (CVA6Cfg.RVH) begin
+    assign real_csr_addr = riscv::convert_vs_access_csr(riscv::csr_t'(csr_addr_i), v_q);
+    assign conv_csr_addr = (CVA6Cfg.RVCSRIND) ? 
+                           (riscv::convert_csrind_access(real_csr_addr, miselect_q, siselect_q, vsiselect_q)) :
+                           (real_csr_addr);
+  end
   assign fs_o = mstatus_q.fs;
   assign vfs_o = (CVA6Cfg.RVH) ? vsstatus_q.fs : riscv::Off;
   assign vs_o = mstatus_q.vs;
@@ -346,7 +366,7 @@ module csr_regfile
     read_access_exception = 1'b0;
     virtual_read_access_exception = 1'b0;
     csr_rdata = '0;
-    perf_addr_o = csr_addr.address[11:0];
+    perf_addr_o = conv_csr_addr.address[11:0];
 
     if (csr_read) begin
       unique case (conv_csr_addr.address)
@@ -423,6 +443,19 @@ module csr_regfile
         riscv::CSR_VSTVAL:
         if (CVA6Cfg.RVH) csr_rdata = vstval_q;
         else read_access_exception = 1'b1;
+        riscv::CSR_VSISELECT:
+        if (CVA6Cfg.RVH && CVA6Cfg.RVCSRIND) csr_rdata = vsiselect_q;
+        else read_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Sscsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_VSIREG,
+        riscv::CSR_VSIREG2,
+        riscv::CSR_VSIREG3,
+        riscv::CSR_VSIREG4,
+        riscv::CSR_VSIREG5,
+        riscv::CSR_VSIREG6: begin
+          read_access_exception = 1'b1;
+        end
         riscv::CSR_VSATP:
         // intercept reads to VSATP if in VS-Mode and VTVM is enabled
         if (CVA6Cfg.RVH) begin
@@ -431,6 +464,14 @@ module csr_regfile
           else csr_rdata = vsatp_q;
         end else begin
           read_access_exception = 1'b1;
+        end
+        riscv::CSR_VSSECCFG: begin
+          if (CVA6Cfg.RVH) csr_rdata = {{CVA6Cfg.XLEN - 1{1'b0}}, vsseccfg_q[0]};
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_VSSECCFGH: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = '0;
+          else read_access_exception = 1'b1;
         end
         // vspmpcfg
         riscv::CSR_VSPMPCFG0,
@@ -451,8 +492,8 @@ module csr_regfile
         riscv::CSR_VSPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             csr_rdata = vspmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
           end
           else read_access_exception = 1'b1;
@@ -524,7 +565,7 @@ module csr_regfile
         riscv::CSR_VSPMPADDR63: begin
           if (CVA6Cfg.RVH) begin
             // index is specified by the last byte of the address
-            automatic int idx = csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
+            automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
             // We only support granularity 8 bytes (G=1)
             // bits vspmpaddr[G-1:0] are all 0s when mode is OFF or TOR
             // bits vspmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -580,6 +621,19 @@ module csr_regfile
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS) csr_rdata = stval_q;
         else read_access_exception = 1'b1;
+        riscv::CSR_SISELECT:
+        if (CVA6Cfg.RVS && CVA6Cfg.RVCSRIND) csr_rdata = siselect_q;
+        else read_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Sscsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_SIREG,
+        riscv::CSR_SIREG2,
+        riscv::CSR_SIREG3,
+        riscv::CSR_SIREG4,
+        riscv::CSR_SIREG5,
+        riscv::CSR_SIREG6: begin
+          read_access_exception = 1'b1;
+        end
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
             // intercept reads to SATP if in S-Mode and TVM is enabled
@@ -591,6 +645,14 @@ module csr_regfile
           end else begin
             read_access_exception = 1'b1;
           end
+        end
+        riscv::CSR_SSECCFG: begin
+          if (CVA6Cfg.RVS) csr_rdata = {{CVA6Cfg.XLEN - 1{1'b0}}, sseccfg_q[0]};
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_SSECCFGH: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.XLEN == 32) csr_rdata = '0;
+          else read_access_exception = 1'b1;
         end
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVS) csr_rdata = '0 | fiom_q;
@@ -613,8 +675,8 @@ module csr_regfile
         riscv::CSR_SPMPCFG14,
         riscv::CSR_SPMPCFG15: begin
           if ((CVA6Cfg.RVS) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             csr_rdata = spmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
           end
           else read_access_exception = 1'b1;
@@ -686,7 +748,7 @@ module csr_regfile
         riscv::CSR_SPMPADDR63: begin
           if (CVA6Cfg.RVH) begin
             // index is specified by the last byte in the address
-            automatic int idx = csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
+            automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
             // We only support granularity 8 bytes (G=1)
             // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
             // bits spmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -758,7 +820,14 @@ module csr_regfile
             read_access_exception = 1'b1;
           end
         end
-
+        // hspmpswitch
+        riscv::CSR_HSPMPSWITCH0:
+        if (CVA6Cfg.RVH) csr_rdata = hspmpswitch0_q;
+        else read_access_exception = 1'b1;
+        riscv::CSR_HSPMPSWITCH1:
+        // For RV64, only hspmpswitch0 is used
+        if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) csr_rdata = hspmpswitch1_q;
+        else read_access_exception = 1'b1;
         // machine mode registers
         riscv::CSR_MSTATUS: csr_rdata = mstatus_extended;
         riscv::CSR_MSTATUSH:
@@ -796,6 +865,19 @@ module csr_regfile
         riscv::CSR_MENVCFGH: begin
           if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MISELECT:
+        if (CVA6Cfg.RVCSRIND) csr_rdata = miselect_q;
+        else read_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Smcsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_MIREG,
+        riscv::CSR_MIREG2,
+        riscv::CSR_MIREG3,
+        riscv::CSR_MIREG4,
+        riscv::CSR_MIREG5,
+        riscv::CSR_MIREG6: begin
+          read_access_exception = 1'b1;
         end
         riscv::CSR_MVENDORID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, OPENHWGROUP_MVENDORID};
         riscv::CSR_MARCHID: csr_rdata = {{CVA6Cfg.XLEN - 32{1'b0}}, ARIANE_MARCHID};
@@ -1025,7 +1107,7 @@ module csr_regfile
                 riscv::CSR_PMPCFG14,
                 riscv::CSR_PMPCFG15: begin
           // index is calculated using PMPCFG0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) read_access_exception = 1'b1;
@@ -1099,7 +1181,7 @@ module csr_regfile
                 riscv::CSR_PMPADDR62,
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
           // Important: we only support granularity 8 bytes (G=1)
           // -> last bit of pmpaddr must be set 0/1 based on the mode:
           // NA4, NAPOT: 1
@@ -1202,6 +1284,7 @@ module csr_regfile
     mcounteren_d = mcounteren_q;
     mscratch_d   = mscratch_q;
     mtval_d      = mtval_q;
+    miselect_d   = miselect_q;
     if (CVA6Cfg.RVH) begin
       mtinst_d = mtinst_q;
       mtval2_d = mtval2_q;
@@ -1218,12 +1301,16 @@ module csr_regfile
       vsepc_d                  = vsepc_q;
       vscause_d                = vscause_q;
       vstval_d                 = vstval_q;
+      vsiselect_d              = vsiselect_q;
       vsatp_d                  = vsatp_q;
+      vsseccfg_d               = vsseccfg_q;
       vspmpcfg_d               = vspmpcfg_q;
       vspmpaddr_d              = vspmpaddr_q;
       vspmpswitch0_d           = vspmpswitch0_q;
       vspmpswitch1_d           = vspmpswitch1_q;
       hgatp_d                  = hgatp_q;
+      hspmpswitch0_d           = hspmpswitch0_q;
+      hspmpswitch1_d           = hspmpswitch1_q;
       hedeleg_d                = hedeleg_q;
       hideleg_d                = hideleg_q;
       hgeie_d                  = hgeie_q;
@@ -1240,7 +1327,9 @@ module csr_regfile
       scounteren_d  = scounteren_q;
       sscratch_d    = sscratch_q;
       stval_d       = stval_q;
+      siselect_d    = siselect_q;
       satp_d        = satp_q;
+      sseccfg_d     = sseccfg_q;
       spmpcfg_d     = spmpcfg_q;
       spmpaddr_d    = spmpaddr_q;
       spmpswitch0_d = spmpswitch0_q;
@@ -1372,6 +1461,19 @@ module csr_regfile
         riscv::CSR_VSTVAL:
         if (CVA6Cfg.RVH) vstval_d = csr_wdata;
         else update_access_exception = 1'b1;
+        riscv::CSR_VSISELECT:
+        if (CVA6Cfg.RVH && CVA6Cfg.RVCSRIND) vsiselect_d = csr_wdata;
+        else update_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Sscsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_VSIREG,
+        riscv::CSR_VSIREG2,
+        riscv::CSR_VSIREG3,
+        riscv::CSR_VSIREG4,
+        riscv::CSR_VSIREG5,
+        riscv::CSR_VSIREG6: begin
+          update_access_exception = 1'b1;
+        end
         // virtual supervisor address translation and protection
         riscv::CSR_VSATP: begin
           if (CVA6Cfg.RVH) begin
@@ -1393,6 +1495,14 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
+        riscv::CSR_VSSECCFG: begin
+          if (CVA6Cfg.RVH) vsseccfg_d[CVA6Cfg.XLEN-1:0] = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_VSSECCFGH: begin
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) vsseccfg_d[63:32] = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
         // vspmpcfg
         riscv::CSR_VSPMPCFG0,
         riscv::CSR_VSPMPCFG1,
@@ -1412,8 +1522,8 @@ module csr_regfile
         riscv::CSR_VSPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
               vspmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
             end
@@ -1489,7 +1599,7 @@ module csr_regfile
         riscv::CSR_VSPMPADDR63: begin
         if (CVA6Cfg.RVH) begin
           // index is specified by the last byte in the address
-          automatic int idx = csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
+          automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
           vspmpaddr_d[idx[5:0]] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
           flush_o = 1'b1;
@@ -1577,6 +1687,19 @@ module csr_regfile
         riscv::CSR_STVAL:
         if (CVA6Cfg.RVS && CVA6Cfg.TvalEn) stval_d = csr_wdata;
         else update_access_exception = 1'b1;
+        riscv::CSR_SISELECT:
+        if (CVA6Cfg.RVS && CVA6Cfg.RVCSRIND) siselect_d = csr_wdata;
+        else update_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Sscsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_SIREG,
+        riscv::CSR_SIREG2,
+        riscv::CSR_SIREG3,
+        riscv::CSR_SIREG4,
+        riscv::CSR_SIREG5,
+        riscv::CSR_SIREG6: begin
+          update_access_exception = 1'b1;
+        end
         // supervisor address translation and protection
         riscv::CSR_SATP: begin
           if (CVA6Cfg.RVS) begin
@@ -1597,6 +1720,14 @@ module csr_regfile
           end else begin
             update_access_exception = 1'b1;
           end
+        end
+        riscv::CSR_SSECCFG: begin
+          if (CVA6Cfg.RVS) sseccfg_d[CVA6Cfg.XLEN-1:0] = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_SSECCFGH: begin
+          if (CVA6Cfg.RVS && CVA6Cfg.XLEN == 32) sseccfg_d[63:32] = csr_wdata;
+          else update_access_exception = 1'b1;
         end
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
@@ -1621,8 +1752,8 @@ module csr_regfile
         riscv::CSR_SPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVS) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
               spmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
             end
@@ -1698,7 +1829,7 @@ module csr_regfile
         riscv::CSR_SPMPADDR63: begin
         if (CVA6Cfg.RVS) begin
           // index is specified by the last byte in the address
-          automatic int idx = csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
+          automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
           spmpaddr_d[idx[5:0]] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
           flush_o = 1'b1;
@@ -1831,6 +1962,21 @@ module csr_regfile
           end else begin
             update_access_exception = 1'b1;
           end
+        end
+        // hspmpswitch
+        riscv::CSR_HSPMPSWITCH0:
+        if (CVA6Cfg.RVH) begin 
+          hspmpswitch0_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
+        end
+        else update_access_exception = 1'b1;
+        riscv::CSR_HSPMPSWITCH1:
+        // For RV64, only hspmpswitch0 is used
+        if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) begin 
+          hspmpswitch1_d = csr_wdata;
+          // this instruction has side-effects
+          flush_o = 1'b1;
         end
         riscv::CSR_HENVCFG:
         if (CVA6Cfg.RVH) fiom_d = csr_wdata[0];
@@ -1986,6 +2132,19 @@ module csr_regfile
         riscv::CSR_MENVCFGH: begin
           if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
         end
+        riscv::CSR_MISELECT:
+        if (CVA6Cfg.RVCSRIND) miselect_d = csr_wdata;
+        else update_access_exception = 1'b1;
+        // The following CSRs can not be accessed directly when Smcsrind
+        // is enabled, as the address is previously converted
+        riscv::CSR_MIREG,
+        riscv::CSR_MIREG2,
+        riscv::CSR_MIREG3,
+        riscv::CSR_MIREG4,
+        riscv::CSR_MIREG5,
+        riscv::CSR_MIREG6: begin
+          update_access_exception = 1'b1;
+        end
         riscv::CSR_MCOUNTINHIBIT:
         if (CVA6Cfg.PerfCounterEn)
           mcountinhibit_d = {csr_wdata[MHPMCounterNum+2:2], 1'b0, csr_wdata[0]};
@@ -2130,7 +2289,7 @@ module csr_regfile
                 riscv::CSR_PMPCFG14,
                 riscv::CSR_PMPCFG15: begin
           // index is calculated using PMPCFG0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) update_access_exception = 1'b1;
@@ -2205,7 +2364,7 @@ module csr_regfile
                 riscv::CSR_PMPADDR62,
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
           // check if the entry or the entry above is locked
           if (!pmpcfg_q[index].locked && !(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
             pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
@@ -2716,7 +2875,7 @@ module csr_regfile
       // transforms S mode accesses into HS mode
       access_priv = (priv_lvl_o == riscv::PRIV_LVL_S && !v_q) ? riscv::PRIV_LVL_HS : priv_lvl_o;
       curr_priv = priv_lvl_o;
-      sel_cnt_en = {{SELECT_COUNTER_WIDTH - 5{1'b0}}, csr_addr_i[4:0]};
+      sel_cnt_en = {{SELECT_COUNTER_WIDTH - 5{1'b0}}, conv_csr_addr.address[4:0]};
       // -----------------
       // Privilege Check
       // -----------------
@@ -2731,14 +2890,14 @@ module csr_regfile
           else privilege_violation = 1'b1;
         end
         // check access to debug mode only CSRs
-        if ((!CVA6Cfg.DebugEn && csr_addr_i[11:4] == 8'h7b) || (CVA6Cfg.DebugEn && csr_addr_i[11:4] == 8'h7b && !debug_mode_q)) begin
+        if ((!CVA6Cfg.DebugEn && csr_addr.address[11:4] == 8'h7b) || (CVA6Cfg.DebugEn && csr_addr.address[11:4] == 8'h7b && !debug_mode_q)) begin
           privilege_violation = 1'b1;
         end
         // check counter-enabled counter CSR accesses
         // counter address range is C00 to C1F
         if (CVA6Cfg.RVZihpm) begin
-          if (csr_addr_i inside {[riscv::CSR_HPM_COUNTER_3 : riscv::CSR_HPM_COUNTER_31]} |
-              csr_addr_i inside {[riscv::CSR_HPM_COUNTER_3H : riscv::CSR_HPM_COUNTER_31H]}) begin
+          if (conv_csr_addr.address inside {[riscv::CSR_HPM_COUNTER_3 : riscv::CSR_HPM_COUNTER_31]} |
+              conv_csr_addr.address inside {[riscv::CSR_HPM_COUNTER_3H : riscv::CSR_HPM_COUNTER_31H]}) begin
             if (curr_priv == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
               virtual_privilege_violation = v_q & mcounteren_q[sel_cnt_en] & ~hcounteren_q[sel_cnt_en];
               privilege_violation = ~mcounteren_q[sel_cnt_en];
@@ -2755,8 +2914,8 @@ module csr_regfile
           end
         end
         if (CVA6Cfg.RVZicntr) begin
-          if (csr_addr_i inside {[riscv::CSR_CYCLE : riscv::CSR_INSTRET]} |
-              csr_addr_i inside {[riscv::CSR_CYCLEH : riscv::CSR_INSTRETH]}) begin
+          if (conv_csr_addr.address inside {[riscv::CSR_CYCLE : riscv::CSR_INSTRET]} |
+              conv_csr_addr.address inside {[riscv::CSR_CYCLEH : riscv::CSR_INSTRETH]}) begin
             if (curr_priv == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
               virtual_privilege_violation = v_q & mcounteren_q[sel_cnt_en] & ~hcounteren_q[sel_cnt_en];
               privilege_violation = ~mcounteren_q[sel_cnt_en];
@@ -2785,30 +2944,30 @@ module csr_regfile
           privilege_violation = 1'b1;
         end
         // check access to debug mode only CSRs
-        if ((!CVA6Cfg.DebugEn && csr_addr_i[11:4] == 8'h7b) || (CVA6Cfg.DebugEn && csr_addr_i[11:4] == 8'h7b && !debug_mode_q)) begin
+        if ((!CVA6Cfg.DebugEn && csr_addr.address[11:4] == 8'h7b) || (CVA6Cfg.DebugEn && csr_addr.address[11:4] == 8'h7b && !debug_mode_q)) begin
           privilege_violation = 1'b1;
         end
         // check counter-enabled counter CSR accesses
         // counter address range is C00 to C1F
         if (CVA6Cfg.RVZihpm) begin
-          if (csr_addr_i inside {[riscv::CSR_HPM_COUNTER_3 : riscv::CSR_HPM_COUNTER_31]} |
-              csr_addr_i inside {[riscv::CSR_HPM_COUNTER_3H : riscv::CSR_HPM_COUNTER_31H]}) begin
+          if (conv_csr_addr.address inside {[riscv::CSR_HPM_COUNTER_3 : riscv::CSR_HPM_COUNTER_31]} |
+              conv_csr_addr.address inside {[riscv::CSR_HPM_COUNTER_3H : riscv::CSR_HPM_COUNTER_31H]}) begin
             if (priv_lvl_o == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
-              privilege_violation = ~mcounteren_q[csr_addr_i[4:0]];
+              privilege_violation = ~mcounteren_q[conv_csr_addr.address[4:0]];
             end else if (priv_lvl_o == riscv::PRIV_LVL_U && CVA6Cfg.RVU) begin
-              privilege_violation = ~mcounteren_q[csr_addr_i[4:0]] | ~scounteren_q[csr_addr_i[4:0]];
+              privilege_violation = ~mcounteren_q[conv_csr_addr.address[4:0]] | ~scounteren_q[conv_csr_addr.address[4:0]];
             end else if (priv_lvl_o == riscv::PRIV_LVL_M) begin
               privilege_violation = 1'b0;
             end
           end
         end
         if (CVA6Cfg.RVZicntr) begin
-          if (csr_addr_i inside {[riscv::CSR_CYCLE : riscv::CSR_INSTRET]} |
-              csr_addr_i inside {[riscv::CSR_CYCLEH : riscv::CSR_INSTRETH]}) begin
+          if (conv_csr_addr.address inside {[riscv::CSR_CYCLE : riscv::CSR_INSTRET]} |
+              conv_csr_addr.address inside {[riscv::CSR_CYCLEH : riscv::CSR_INSTRETH]}) begin
             if (priv_lvl_o == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
-              privilege_violation = ~mcounteren_q[csr_addr_i[4:0]];
+              privilege_violation = ~mcounteren_q[conv_csr_addr.address[4:0]];
             end else if (priv_lvl_o == riscv::PRIV_LVL_U && CVA6Cfg.RVU) begin
-              privilege_violation = ~mcounteren_q[csr_addr_i[4:0]] | ~scounteren_q[csr_addr_i[4:0]];
+              privilege_violation = ~mcounteren_q[conv_csr_addr.address[4:0]] | ~scounteren_q[conv_csr_addr.address[4:0]];
             end else if (priv_lvl_o == riscv::PRIV_LVL_M) begin
               privilege_violation = 1'b0;
             end
@@ -2997,26 +3156,44 @@ module csr_regfile
   assign single_step_o = CVA6Cfg.DebugEn ? dcsr_q.step : 1'b0;
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
 
-  assign spmpcfg_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpcfg_q) : ('0);
-  assign spmpaddr_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpaddr_q) : ('0);
-  if (CVA6Cfg.XLEN == 32) begin
-    assign spmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? ({spmpswitch1_q, spmpswitch0_q}) : ('0);
+  assign sseccfg_smaa_o = sseccfg_q[0];
+  assign vsseccfg_smaa_o = vsseccfg_q[0];
+
+  if (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) begin
+    assign spmpcfg_o = spmpcfg_q;
+    assign spmpaddr_o = spmpaddr_q;
+    if (CVA6Cfg.XLEN == 32) begin
+      assign spmpswitch_o = {spmpswitch1_q, spmpswitch0_q};
+      assign hspmpswitch_o = {hspmpswitch1_q, hspmpswitch0_q};
+    end
+    else if (CVA6Cfg.XLEN == 64) begin
+      assign spmpswitch_o = spmpswitch0_q;
+      assign hspmpswitch_o = hspmpswitch0_q;
+    end
+    else
+      assign spmpswitch_o = '0;
   end
-  else if (CVA6Cfg.XLEN == 64) begin
-    assign spmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpswitch0_q) : ('0);
+  else begin
+    assign spmpcfg_o = '0;
+    assign spmpaddr_o = '0;
+    assign spmpswitch_o = '0;
   end
-  else
-    assign spmpswitch_o  = '0;
-  assign vspmpcfg_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpcfg_q) : ('0);
-  assign vspmpaddr_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpaddr_q) : ('0);
-  if (CVA6Cfg.XLEN == 32) begin
-    assign vspmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? ({vspmpswitch1_q, vspmpswitch0_q}) : ('0);
+
+  if (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) begin
+    assign vspmpcfg_o = vspmpcfg_q;
+    assign vspmpaddr_o = vspmpaddr_q;
+    if (CVA6Cfg.XLEN == 32)
+      assign vspmpswitch_o = {vspmpswitch1_q, vspmpswitch0_q};
+    else if (CVA6Cfg.XLEN == 64)
+      assign vspmpswitch_o = vspmpswitch0_q;
+    else
+      assign vspmpswitch_o = '0;
   end
-  else if (CVA6Cfg.XLEN == 64) begin
-    assign vspmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpswitch0_q) : ('0);
-  end
-  else
+  else begin
+    assign vspmpcfg_o = '0;
+    assign vspmpaddr_o = '0;
     assign vspmpswitch_o = '0;
+  end
 
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -3046,6 +3223,7 @@ module csr_regfile
       mcounteren_q     <= {CVA6Cfg.XLEN{1'b0}};
       mscratch_q       <= {CVA6Cfg.XLEN{1'b0}};
       mtval_q          <= {CVA6Cfg.XLEN{1'b0}};
+      miselect_q       <= {CVA6Cfg.XLEN{1'b0}};
       fiom_q           <= '0;
       dcache_q         <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       icache_q         <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
@@ -3061,7 +3239,9 @@ module csr_regfile
         scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
         sscratch_q   <= {CVA6Cfg.XLEN{1'b0}};
         stval_q      <= {CVA6Cfg.XLEN{1'b0}};
+        siselect_q   <= {CVA6Cfg.XLEN{1'b0}};
         satp_q       <= {CVA6Cfg.XLEN{1'b0}};
+        sseccfg_q    <= {CVA6Cfg.XLEN{1'b0}};
         for (int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
           spmpcfg_q[i]  <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
           spmpaddr_q[i] <= CVA6Cfg.SPMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
@@ -3079,6 +3259,8 @@ module csr_regfile
         hideleg_q                <= {CVA6Cfg.XLEN{1'b0}};
         hgeie_q                  <= {CVA6Cfg.XLEN{1'b0}};
         hgatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
+        hspmpswitch0_q           <= {CVA6Cfg.XLEN{1'b0}};
+        hspmpswitch1_q           <= {CVA6Cfg.XLEN{1'b0}};
         hcounteren_q             <= {CVA6Cfg.XLEN{1'b0}};
         htval_q                  <= {CVA6Cfg.XLEN{1'b0}};
         htinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
@@ -3089,7 +3271,9 @@ module csr_regfile
         vstvec_q                 <= {CVA6Cfg.XLEN{1'b0}};
         vsscratch_q              <= {CVA6Cfg.XLEN{1'b0}};
         vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
+        vsiselect_q              <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
+        vsseccfg_q               <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
         // Assumed same reset value for SPMP and vSPMP
         for (int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
@@ -3139,6 +3323,7 @@ module csr_regfile
       mcounteren_q     <= mcounteren_d;
       mscratch_q       <= mscratch_d;
       if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
+      miselect_q      <= miselect_d;
       fiom_q          <= fiom_d;
       dcache_q        <= dcache_d;
       icache_q        <= icache_d;
@@ -3154,7 +3339,9 @@ module csr_regfile
         scounteren_q <= scounteren_d;
         sscratch_q   <= sscratch_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
+        siselect_q   <= siselect_d;
         satp_q <= satp_d;
+        sseccfg_q    <= sseccfg_d;
         for(int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
           if(spmpcfg_d[i].addr_mode != riscv::NA4)
             spmpcfg_q[i] <= spmpcfg_d[i];
@@ -3175,6 +3362,8 @@ module csr_regfile
         hideleg_q                <= hideleg_d;
         hgeie_q                  <= hgeie_d;
         hgatp_q                  <= hgatp_d;
+        hspmpswitch0_q           <= hspmpswitch0_d;
+        hspmpswitch1_q           <= hspmpswitch1_d;
         hcounteren_q             <= hcounteren_d;
         htval_q                  <= htval_d;
         htinst_q                 <= htinst_d;
@@ -3185,7 +3374,9 @@ module csr_regfile
         vstvec_q                 <= vstvec_d;
         vsscratch_q              <= vsscratch_d;
         vstval_q                 <= vstval_d;
+        vsiselect_q              <= vsiselect_d;
         vsatp_q                  <= vsatp_d;
+        vsseccfg_q               <= vsseccfg_d;
         en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
         for(int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
           if(vspmpcfg_d[i].addr_mode != riscv::NA4)

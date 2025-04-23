@@ -117,6 +117,10 @@ module load_store_unit
     input  logic             [      CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
+    // Supervisor Security Configuration
+    input  logic                                      sseccfg_smaa_i,
+    // Virtual Supervisor Security Configuration
+    input  logic                                      vsseccfg_smaa_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.ASID_WIDTH-1:0] asid_to_be_flushed_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -158,6 +162,8 @@ module load_store_unit
     input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
     // SPMP switch
     input logic [63:0] spmpswitch_i,
+    // hSPMP switch
+    input logic [63:0] hspmpswitch_i,
     // vSPMP configuration
     input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
     // vSPMP addresses
@@ -347,6 +353,8 @@ module load_store_unit
         .v_i              (v_i),
         .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
         .ld_st_v_i        (ld_st_v_i),
+        .sseccfg_smaa_i   (sseccfg_smaa_i),
+        .vsseccfg_smaa_i  (vsseccfg_smaa_i),
         .sum_i            (sum_i),
         .vs_sum_i         (vs_sum_i),
         .mxr_i            (mxr_i),
@@ -372,6 +380,7 @@ module load_store_unit
         .spmpcfg_i        (spmpcfg_i),
         .spmpaddr_i       (spmpaddr_i),
         .spmpswitch_i     (spmpswitch_i),
+        .hspmpswitch_i    (hspmpswitch_i),
         .vspmpcfg_i       (vspmpcfg_i),
         .vspmpaddr_i      (vspmpaddr_i),
         .vspmpswitch_i    (vspmpswitch_i)

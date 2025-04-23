@@ -545,6 +545,8 @@ module cva6
   logic [CVA6Cfg.ASID_WIDTH-1:0] vs_asid_csr_ex;
   logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_csr_ex;
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
+  logic sseccfg_smaa;
+  logic vsseccfg_smaa;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;
   logic [CVA6Cfg.XLEN-1:0] csr_wdata_commit_csr;
@@ -567,7 +569,7 @@ module cva6
   logic [31:0] mcountinhibit_csr_perf;
   riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg, vspmpcfg;
   logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr, vspmpaddr;
-  logic [63:0] spmpswitch, vspmpswitch;
+  logic [63:0] spmpswitch, hspmpswitch, vspmpswitch;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -1013,6 +1015,8 @@ module cva6
       .vs_asid_i               (vs_asid_csr_ex),                 // from CSR
       .hgatp_ppn_i             (hgatp_ppn_csr_ex),               // from CSR
       .vmid_i                  (vmid_csr_ex),                    // from CSR
+      .sseccfg_smaa_i          (sseccfg_smaa),
+      .vsseccfg_smaa_i         (vsseccfg_smaa),
       .icache_areq_i           (icache_areq_cache_ex),
       .icache_areq_o           (icache_areq_ex_cache),
       // DCACHE interfaces
@@ -1027,6 +1031,7 @@ module cva6
       .spmpcfg_i               (spmpcfg),
       .spmpaddr_i              (spmpaddr),
       .spmpswitch_i            (spmpswitch),
+      .hspmpswitch_i           (hspmpswitch),
       .vspmpcfg_i              (vspmpcfg),
       .vspmpaddr_i             (vspmpaddr),
       .vspmpswitch_i           (vspmpswitch),
@@ -1151,6 +1156,8 @@ module cva6
       .vs_asid_o               (vs_asid_csr_ex),
       .hgatp_ppn_o             (hgatp_ppn_csr_ex),
       .vmid_o                  (vmid_csr_ex),
+      .sseccfg_smaa_o          (sseccfg_smaa),
+      .vsseccfg_smaa_o         (vsseccfg_smaa),
       .irq_i,
       .ipi_i,
       .debug_req_i,
@@ -1174,6 +1181,7 @@ module cva6
       .spmpcfg_o               (spmpcfg),
       .spmpaddr_o              (spmpaddr),
       .spmpswitch_o            (spmpswitch),
+      .hspmpswitch_o           (hspmpswitch),
       .vspmpcfg_o              (vspmpcfg),
       .vspmpaddr_o             (vspmpaddr),
       .vspmpswitch_o           (vspmpswitch), 

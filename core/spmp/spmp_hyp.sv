@@ -46,6 +46,7 @@ module spmp_hyp
     input  riscv::pmp_access_t access_type_i,
     input  riscv::priv_lvl_t priv_lvl_i,
     // CSR data
+    input  logic smaa_i,
     input  logic sum_i,
     input  logic mxr_i,
     input  logic vmxr_i,
@@ -185,7 +186,8 @@ module spmp_hyp
                             3'b001,
                             3'b101,
                             3'b100,
-                            3'b011: begin
+                            3'b011,
+                            3'b111: begin
                                 if (eff_Smode && enforce[k]) begin
                                     allow = 1'b1;
                                 end
@@ -194,13 +196,6 @@ module spmp_hyp
                             // Reserved encoding
                             3'b000: begin
                                 allow =   1'b0;
-                            end
-
-                            // Shared RO
-                            3'b111: begin
-                                if (access_R) begin
-                                    allow = 1'b1;
-                                end
                             end
 
                             // R for S-mode, Shared X
@@ -265,9 +260,13 @@ module spmp_hyp
             if (k == CVA6Cfg.NrSPMPEntries) begin
 
                 // If no SPMP entry matches, the following accesses are allowed:
-                // M/HS/U/VS-mode accesses if is_vSPMP = 1
-                // M/HS-mode accesses if is_vSPMP = 0
-                if (eff_Smode) begin
+                // if is_vSPMP = 1
+                //  - vsseccfg.SMAA = 0: M/HS/U/VS-mode
+                //  - vsseccfg.SMAA = 1: M/HS/U-mode
+                // if is_vSPMP = 0
+                //  - hseccfg.SMAA = 0: M/HS-mode
+                //  - hseccfg.SMAA = 1: M-mode
+                if (eff_Smode & ~smaa_i) begin
                     allow = 1'b1;
                 end
             end

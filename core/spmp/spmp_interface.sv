@@ -30,6 +30,8 @@ module spmp_interface #(
     input  logic v_i,
     input  riscv::priv_lvl_t ld_st_priv_lvl_i,
     input  logic ld_st_v_i,
+    input  logic sseccfg_smaa_i,
+    input  logic vsseccfg_smaa_i,
     input  logic sum_i,
     input  logic vs_sum_i,
     input  logic mxr_i,
@@ -57,6 +59,7 @@ module spmp_interface #(
     input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_i,
     input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
     input logic [63:0] spmpswitch_i,
+    input logic [63:0] hspmpswitch_i,
     input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
     input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_i,
     input logic [63:0] vspmpswitch_i
@@ -69,6 +72,7 @@ module spmp_interface #(
     logic [CVA6Cfg.PLEN-1:0]  if_req_addr;
     logic [CVA6Cfg.XLEN-1:0]  if_ex_addr;
     logic [CVA6Cfg.GPLEN-1:0] if_ex_gpaddr;
+    logic [63:0] if_spmpswitch;
     logic if_spmp_allow, if_vspmp_allow;
 
     always_comb begin : if_spmp
@@ -84,6 +88,8 @@ module spmp_interface #(
         if_ex_gpaddr = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
                         (if_req_addr[CVA6Cfg.GPLEN-1:0]):
                         {if_req_addr};
+
+        if_spmpswitch = (v_i) ? (hspmpswitch_i) : (spmpswitch_i);
 
         if_req_o.fetch_valid        = if_req_i.fetch_req;
         if_req_o.fetch_paddr        = if_req_addr;
@@ -131,6 +137,7 @@ module spmp_interface #(
 
     logic [CVA6Cfg.XLEN-1:0]  lsu_ex_addr;
     logic [CVA6Cfg.GPLEN-1:0] lsu_ex_gpaddr;
+    logic [63:0]              lsu_spmpswitch;
     logic                     lsu_spmp_allow_q, lsu_spmp_allow_d;
     logic                     lsu_vspmp_allow_q, lsu_vspmp_allow_d;
 
@@ -142,6 +149,7 @@ module spmp_interface #(
         access_type     = (lsu_is_store_i) ? 
                           (riscv::ACCESS_WRITE) : 
                           (riscv::ACCESS_READ);
+        lsu_spmpswitch  = (ld_st_v_i) ? (hspmpswitch_i) : (spmpswitch_i);
 
         lsu_data_d.addr         = lsu_req_addr;
         lsu_data_d.is_store     = lsu_is_store_i;
@@ -223,11 +231,12 @@ module spmp_interface #(
             .addr_i             (if_req_addr),
             .access_type_i      (riscv::ACCESS_EXEC),
             .priv_lvl_i         (priv_lvl_i),
+            .smaa_i             (vsseccfg_smaa_i),
             .sum_i              (vs_sum_i),
-            .mxr_i              (mxr_i),
-            .vmxr_i             (vmxr_i),
+            .mxr_i              (1'b0),
+            .vmxr_i             (1'b0),
             .v_i                (v_i),
-            .is_hlvx_inst_i     (hlvx_inst_i),
+            .is_hlvx_inst_i     (1'b0),
             .mmu_enabled_i      (mmu_enabled_i),
             .spmpcfg_i          (vspmpcfg_i),
             .spmpaddr_i         (vspmpaddr_i),
@@ -243,15 +252,16 @@ module spmp_interface #(
             .addr_i             (if_req_addr),
             .access_type_i      (riscv::ACCESS_EXEC),
             .priv_lvl_i         (priv_lvl_i),
+            .smaa_i             (sseccfg_smaa_i),
             .sum_i              (sum_i),
-            .mxr_i              (mxr_i),
-            .vmxr_i             (vmxr_i),
+            .mxr_i              (1'b0),
+            .vmxr_i             (1'b0),
             .v_i                (v_i),
-            .is_hlvx_inst_i     (hlvx_inst_i),
+            .is_hlvx_inst_i     (1'b0),
             .mmu_enabled_i      (mmu_enabled_i),
             .spmpcfg_i          (spmpcfg_i),
             .spmpaddr_i         (spmpaddr_i),
-            .spmpswitch_i       (spmpswitch_i),
+            .spmpswitch_i       (if_spmpswitch),
             .allow_o            (if_spmp_allow)
         );
             
@@ -263,6 +273,7 @@ module spmp_interface #(
             .addr_i             (lsu_req_addr),
             .access_type_i      (access_type),
             .priv_lvl_i         (ld_st_priv_lvl_i),
+            .smaa_i             (vsseccfg_smaa_i),
             .sum_i              (vs_sum_i),
             .mxr_i              (mxr_i),
             .vmxr_i             (vmxr_i),
@@ -283,6 +294,7 @@ module spmp_interface #(
             .addr_i             (lsu_req_addr),
             .access_type_i      (access_type),
             .priv_lvl_i         (ld_st_priv_lvl_i),
+            .smaa_i             (sseccfg_smaa_i),
             .sum_i              (sum_i),
             .mxr_i              (mxr_i),
             .vmxr_i             (vmxr_i),
@@ -291,7 +303,7 @@ module spmp_interface #(
             .mmu_enabled_i      (mmu_enabled_i),
             .spmpcfg_i          (spmpcfg_i),
             .spmpaddr_i         (spmpaddr_i),
-            .spmpswitch_i       (spmpswitch_i),
+            .spmpswitch_i       (lsu_spmpswitch),
             .allow_o            (lsu_spmp_allow_d)
         );
     end : gen_double_spmp
@@ -306,8 +318,9 @@ module spmp_interface #(
             .addr_i             (if_req_addr),
             .access_type_i      (riscv::ACCESS_EXEC),
             .priv_lvl_i         (priv_lvl_i),
+            .smaa_i             (sseccfg_smaa_i),
             .sum_i              (sum_i),
-            .mxr_i              (mxr_i),
+            .mxr_i              (1'b0),
             .mmu_enabled_i      (mmu_enabled_i),
             .spmpcfg_i          (spmpcfg_i),
             .spmpaddr_i         (spmpaddr_i),
@@ -322,6 +335,7 @@ module spmp_interface #(
             .addr_i             (lsu_req_addr),
             .access_type_i      (access_type),
             .priv_lvl_i         (ld_st_priv_lvl_i),
+            .smaa_i             (sseccfg_smaa_i),
             .sum_i              (sum_i),
             .mxr_i              (mxr_i),
             .mmu_enabled_i      (mmu_enabled_i),
