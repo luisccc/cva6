@@ -198,16 +198,16 @@ module spmp_hyp
                                 allow =   1'b0;
                             end
 
-                            // R for S-mode, Shared X
+                            // Shared RX
                             3'b110: begin
-                                if ((access_X) || (access_R && eff_Smode)) begin
+                                if (access_R || access_X) begin
                                     allow = 1'b1;
                                 end
                             end
 
-                            // Shared X
+                            // R for S-mode, Shared X
                             3'b010: begin
-                                if (access_X) begin
+                                if ((access_X) || (access_R && eff_Smode)) begin
                                     allow = 1'b1;
                                 end
                             end

@@ -244,6 +244,7 @@ module csr_regfile
   // we are in debug
   logic debug_mode_q, debug_mode_d;
   logic mtvec_rst_load_q;  // used to determine whether we came out of reset
+  logic is_csrind_access; // CSR indirect access
 
   logic [CVA6Cfg.XLEN-1:0] dpc_q, dpc_d;
   logic [CVA6Cfg.XLEN-1:0] dscratch0_q, dscratch0_d;
@@ -346,6 +347,7 @@ module csr_regfile
   assign fs_o = mstatus_q.fs;
   assign vfs_o = (CVA6Cfg.RVH) ? vsstatus_q.fs : riscv::Off;
   assign vs_o = mstatus_q.vs;
+  assign is_csrind_access = (real_csr_addr != conv_csr_addr) ? (1'b1) : (1'b0);
   // ----------------
   // CSR Read logic
   // ----------------
@@ -493,8 +495,14 @@ module csr_regfile
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
-            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
-            csr_rdata = vspmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
+            if (is_csrind_access) begin
+              automatic int idx = vsiselect_q[5:0];   // TODO: Subtract vsiselect spmp base
+              csr_rdata = CVA6Cfg.XLEN'(vspmpcfg_q[idx]);
+            end
+            else begin
+              automatic int idx = conv_csr_addr.csr_decode.address[3:0];
+              csr_rdata = vspmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
+            end
           end
           else read_access_exception = 1'b1;
         end
@@ -676,8 +684,14 @@ module csr_regfile
         riscv::CSR_SPMPCFG15: begin
           if ((CVA6Cfg.RVS) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
-            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
-            csr_rdata = spmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
+            if (is_csrind_access) begin
+              automatic int idx = siselect_q[5:0];  // TODO: Subtract siselect spmp base
+              csr_rdata = CVA6Cfg.XLEN'(spmpcfg_q[idx]);
+            end
+            else begin
+              automatic int idx = conv_csr_addr.csr_decode.address[3:0];
+              csr_rdata = spmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
+            end
           end
           else read_access_exception = 1'b1;
         end
@@ -1523,9 +1537,15 @@ module csr_regfile
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
-            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
-            for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
-              vspmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
+            if (is_csrind_access) begin
+              automatic int idx = vsiselect_q[5:0] + real_csr_addr[1];
+              vspmpcfg_d[idx] = csr_wdata[7:0];
+            end
+            else begin
+              automatic int idx = conv_csr_addr.csr_decode.address[3:0];
+              for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
+                vspmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
+              end
             end
             // this instruction has side-effects
             flush_o = 1'b1;
@@ -1753,9 +1773,15 @@ module csr_regfile
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVS) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
-            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
-            for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
-              spmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
+            if (is_csrind_access) begin
+              automatic int idx = siselect_q[5:0] + real_csr_addr[1];
+              spmpcfg_d[idx] = csr_wdata[7:0];
+            end
+            else begin
+              automatic int idx = conv_csr_addr.csr_decode.address[3:0];
+              for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
+                spmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
+              end
             end
             // this instruction has side-effects
             flush_o = 1'b1;

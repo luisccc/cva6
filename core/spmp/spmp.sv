@@ -39,18 +39,18 @@ module spmp
     output logic allow_o
 );
 
-    if (CVA6Cfg.NrSPMPEntries > 0) begin : gen_spmp
+    if (CVA6Cfg.NrSPMPEntries > 0) begin : gen_spmp_logic
 
         //--------------------------
         // SPMP Address Match Logic
         //--------------------------
 
         logic [(CVA6Cfg.NrSPMPEntries-1):0] match;
-        logic [(CVA6Cfg.NrSPMPEntries-1):0][CVA6Cfg.PLEN-3:0] spmpaddr_prev;
 
         for (genvar i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin : gen_spmp_matchers
             
             // Get previous address reg for TOR configs
+            logic [(CVA6Cfg.NrSPMPEntries-1):0][CVA6Cfg.PLEN-3:0] spmpaddr_prev;
             assign spmpaddr_prev[i] = ((i == 0) ? ('0) : (spmpaddr_i[i-1]));
 
             spmp_addr_matcher #(
@@ -78,15 +78,143 @@ module spmp
         assign access_X     = (access_type_i == riscv::ACCESS_EXEC);
         assign access_RW    = access_R | access_W;
 
-        logic enforce, enforce_no_x;
+        // Permission check
+        logic [(CVA6Cfg.NrSPMPEntries-1):0] enforce, enforce_no_x;
 
-        always_comb begin : spmp_check
+        always_comb begin : gen_spmp_enforce
 
-            int unsigned i;
+            for (int unsigned i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
 
-            enforce         = 1'b0;
-            enforce_no_x    = 1'b0;
-            allow_o         = 1'b0;
+                enforce[i]      = 1'b0;
+                enforce_no_x[i] = 1'b0;
+
+                // Enforce checks
+                // Access is allowed if:
+                // (1) Permissions matches with access type
+                // (2) Read access and spmpcfg.X = 1 and sstatus.MXR = 1
+                if (((access_type_i & spmpcfg_i[i].access_perm) == access_type_i) ||
+                    (access_R && spmpcfg_i[i].access_perm.x && mxr_i)) begin
+                    enforce[i] = 1'b1;
+                end
+
+                // Enforce checks without X permissions
+                if ((access_type_i & {1'b0, spmpcfg_i[i].access_perm[1:0]}) == access_type_i) begin
+                    enforce_no_x[i] = 1'b1;
+                end
+            end
+        end : gen_spmp_enforce
+
+        logic allow;
+
+        always_comb begin : gen_spmp_check
+
+            int unsigned k;
+
+            allow = 1'b0;
+
+            // SPMP entries are statically prioritized
+            // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
+            for (k = 0; k < CVA6Cfg.NrSPMPEntries; k++) begin
+
+                if (match[k] && spmpswitch_i[k]) begin
+
+                    // S-mode rule
+                    if (spmpcfg_i[k].s_mode) begin
+                        
+                        // XWR
+                        unique case (spmpcfg_i[k].access_perm)
+
+                            // Enforce for S-mode, deny for U-mode 
+                            3'b001,
+                            3'b101,
+                            3'b100,
+                            3'b011,
+                            3'b111: begin
+                                if ((priv_lvl_i == riscv::PRIV_LVL_S) && enforce[k]) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Reserved encoding
+                            3'b000: begin
+                                allow = 1'b0;
+                            end
+
+                            // Shared RX
+                            3'b110: begin
+                                if (access_R || access_X) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // R for S-mode, Shared X
+                            3'b010: begin
+                                if ((access_X) || (access_R && (priv_lvl_i == riscv::PRIV_LVL_S))) begin
+                                    allow = 1'b1;
+                                end
+                            end
+                        endcase
+                    end
+
+                    // U-mode rule
+                    else begin
+                        
+                        // XWR
+                        unique case (spmpcfg_i[k].access_perm)
+
+                            // Deny for S-mode if sstatus.SUM = 0,
+                            // Enforce without X for S-mode if sstatus.SUM = 1,
+                            // Enforce for U-mode 
+                            3'b001,
+                            3'b101,
+                            3'b100,
+                            3'b000,
+                            3'b011,
+                            3'b111: begin
+                                if (((priv_lvl_i == riscv::PRIV_LVL_S) && 
+                                        sum_i && enforce_no_x[k]) ||
+                                    ((priv_lvl_i == riscv::PRIV_LVL_U) && enforce[k])) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Shared RW
+                            3'b110: begin
+                                if (access_RW) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Shared R, RW for S-mode
+                            3'b010: begin
+                                if ((access_R) || 
+                                    (access_W && (priv_lvl_i == riscv::PRIV_LVL_S))) begin
+                                    allow = 1'b1;
+                                end
+                            end
+                        endcase
+                    end
+
+                    // No need to continue after a match
+                    break;
+                end
+            end
+
+            // no match
+            if (k == CVA6Cfg.NrSPMPEntries) begin
+
+                // If no SPMP entry matches:
+                // - M-mode accesses are always allowed
+                // - S-mode accesses are allowed if sseccfg.SMAA = 0
+                if ((priv_lvl_i == riscv::PRIV_LVL_S) && !smaa_i) begin
+                    allow = 1'b1;
+                end
+            end
+        end : gen_spmp_check
+
+        always_comb begin : gen_spmp_allow
+
+            allow_o = 1'b0;
 
             // All M-mode accesses pass SPMP cheks
             // If the core MMU is enabled (satp.mode != Bare), SPMP is not used
@@ -95,101 +223,10 @@ module spmp
             end
 
             else begin
-                // SPMP entries are statically prioritized
-                // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
-                for (i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
-
-                    // Enforce permission checks
-                    // mstatus.mxr makes loads succeed with executable permissions
-                    enforce         = (((access_type_i & spmpcfg_i[i].access_perm) == access_type_i) |
-                                       (access_R & spmpcfg_i[i].access_perm.x & mxr_i));
-                    // Enforce permission checks without X permissions
-                    enforce_no_x    = ((access_type_i & {1'b0, spmpcfg_i[i].access_perm[1:0]}) == access_type_i);
-
-                    if (match[i] && spmpswitch_i[i]) begin
-
-                        // S-mode only rule
-                        if (spmpcfg_i[i].s_mode) begin
-                            
-                            // XWR
-                            unique case (spmpcfg_i[i].access_perm)
-
-                                // Enforce for S-mode, deny for U-mode 
-                                3'b001,
-                                3'b101,
-                                3'b100,
-                                3'b011,
-                                3'b111: begin
-                                    allow_o =   ((priv_lvl_i == riscv::PRIV_LVL_S) & enforce);
-                                end
-
-                                // Reserved encoding
-                                3'b000: begin
-                                    allow_o =   1'b0;
-                                end
-
-                                // RX for S-mode, X for U-mode
-                                3'b110: begin
-                                    allow_o =   (access_X) |
-                                                (access_R & (priv_lvl_i == riscv::PRIV_LVL_S));
-                                end
-
-                                // Shared X
-                                3'b010: begin
-                                    allow_o =   (access_X);
-                                end
-                            endcase
-                        end
-
-                        // U-mode only rule or shared region
-                        else begin
-                            
-                            // XWR
-                            unique case (spmpcfg_i[i].access_perm)
-
-                                // Deny for S-mode if sstatus.SUM = 0,
-                                // Enforce without X for S-mode if sstatus.SUM = 1,
-                                // Enforce for U-mode 
-                                3'b001,
-                                3'b101,
-                                3'b100,
-                                3'b000,
-                                3'b011,
-                                3'b111: begin
-                                    allow_o =   (priv_lvl_i == riscv::PRIV_LVL_S) ? 
-                                                (sum_i & enforce_no_x) : 
-                                                (enforce);
-                                end
-
-                                // Shared RW
-                                3'b110: begin
-                                    allow_o =   (access_RW);
-                                end
-
-                                // R for U-mode, RW for S-mode
-                                3'b010: begin
-                                    allow_o =   (access_R) |
-                                                (access_W & (priv_lvl_i == riscv::PRIV_LVL_S));
-                                end
-                            endcase
-                        end
-
-                        // No need to continue after a match
-                        break;
-                    end
-                end
-
-                // no match
-                if (i == CVA6Cfg.NrSPMPEntries) begin
-
-                    // If no SPMP entry matches:
-                    // - M-mode accesses are always allowed
-                    // - S-mode accesses are allowed if sseccfg.SMAA = 0
-                    allow_o = (priv_lvl_i == riscv::PRIV_LVL_S) & ~smaa_i;
-                end
+                allow_o = allow;
             end
-        end : spmp_check
-    end : gen_spmp
+        end : gen_spmp_allow
+    end : gen_spmp_logic
     
     // if there are no SPMP entries we can always grant the access
     else
