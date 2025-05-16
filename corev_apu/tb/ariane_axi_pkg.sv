@@ -28,6 +28,9 @@ package ariane_axi;
     typedef logic [DataWidth-1:0] data_t;
     typedef logic [StrbWidth-1:0] strb_t;
     typedef logic [UserWidth-1:0] user_t;
+    
+    // AXI Aditional Request Qualifiers - IOPMP (Chapter A11)
+    typedef logic [3:0]                             nsaid_t;
 
     // AW Channel
     typedef struct packed {
@@ -44,6 +47,24 @@ package ariane_axi;
         axi_pkg::atop_t   atop;
         user_t            user;
     } aw_chan_t;
+
+    // AW NSAID Channel
+    typedef struct packed {
+        id_t              id;
+        addr_t            addr;
+        axi_pkg::len_t    len;
+        axi_pkg::size_t   size;
+        axi_pkg::burst_t  burst;
+        logic             lock;
+        axi_pkg::cache_t  cache;
+        axi_pkg::prot_t   prot;
+        axi_pkg::qos_t    qos;
+        axi_pkg::region_t region;
+        axi_pkg::atop_t   atop;
+        user_t            user;
+        nsaid_t           nsaid;
+    } aw_nsaid_chan_t;
+
 
     // W Channel - AXI4 doesn't define a wid
     typedef struct packed {
@@ -75,6 +96,22 @@ package ariane_axi;
         user_t            user;
     } ar_chan_t;
 
+    // AR NSAID Channel
+    typedef struct packed {
+        id_t             id;
+        addr_t            addr;
+        axi_pkg::len_t    len;
+        axi_pkg::size_t   size;
+        axi_pkg::burst_t  burst;
+        logic             lock;
+        axi_pkg::cache_t  cache;
+        axi_pkg::prot_t   prot;
+        axi_pkg::qos_t    qos;
+        axi_pkg::region_t region;
+        user_t            user;
+        nsaid_t           nsaid;
+    } ar_nsaid_chan_t;
+
     // R Channel
     typedef struct packed {
         id_t            id;
@@ -95,6 +132,17 @@ package ariane_axi;
         logic     ar_valid;
         logic     r_ready;
     } req_t;
+
+    typedef struct packed {
+        aw_nsaid_chan_t aw;
+        logic     aw_valid;
+        w_chan_t  w;
+        logic     w_valid;
+        logic     b_ready;
+        ar_nsaid_chan_t ar;
+        logic     ar_valid;
+        logic     r_ready;
+    } req_nsaid_t;
 
     typedef struct packed {
         logic     aw_ready;

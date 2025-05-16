@@ -12,6 +12,8 @@
 
 `include "register_interface/assign.svh"
 `include "register_interface/typedef.svh"
+`include "axi/assign.svh"
+`include "axi/typedef.svh"
 
 module ariane_peripherals #(
     parameter int AxiAddrWidth = -1,
@@ -22,7 +24,8 @@ module ariane_peripherals #(
     parameter bit InclSPI      = 0,
     parameter bit InclEthernet = 0,
     parameter bit InclGPIO     = 0,
-    parameter bit InclTimer    = 1
+    parameter bit InclTimer    = 1,
+    parameter bit InclChecker  = 0
 ) (
     input  logic       clk_i           , // Clock
     input  logic       clk_200MHz_i    ,
@@ -33,6 +36,9 @@ module ariane_peripherals #(
     AXI_BUS.Slave      gpio            ,
     AXI_BUS.Slave      ethernet        ,
     AXI_BUS.Slave      timer           ,
+    AXI_BUS.Slave      checker_cfg     , // Checker configuration IF     (XBAR   => Checker  )
+    AXI_BUS.Slave      dma_cfg         , // DMA Engine configuration IF     (XBAR   => DMA  )
+    AXI_BUS.Master     dma_engine      , // IOPMP Initiator Port            (IOPMP  => XBAR )
     output logic [1:0] irq_o           ,
     // UART
     input  logic       rx_i            ,
@@ -832,4 +838,135 @@ module ariane_peripherals #(
             .irq_o   ( irq_sources[6:3] )
         );
     end
+
+
+    // -----------
+    //# Secure DMA Engine
+    // -----------
+    // AXI Bus between IOPMP Memory IF (Mst) and System Interconnect (Slv)
+    ariane_axi::req_nsaid_t checker_oup_req;
+    ariane_axi::resp_t      checker_oup_rsp;
+    `AXI_ASSIGN_FROM_REQ(dma_engine, checker_oup_req)
+    `AXI_ASSIGN_TO_RESP(checker_oup_rsp, dma_engine)
+
+    // // AXI Bus between System Interconnect (Mst) and iopmp Programming IF (Slv)
+    ariane_axi_soc::req_slv_t  checker_cp_req;
+    ariane_axi_soc::resp_slv_t checker_cp_rsp;
+    `AXI_ASSIGN_TO_REQ(checker_cp_req, checker_cfg)
+    `AXI_ASSIGN_FROM_RESP(checker_cfg, checker_cp_rsp)
+
+    // // AXI Bus between DMA-device (Mst) and iopmp rp IF (Slv)
+    // // Extended with iopmp-specific signals
+    ariane_axi::req_nsaid_t   checker_inp_req;
+    ariane_axi::resp_t        checker_inp_rsp;
+
+    // AXI Bus between iDMA (Mst) and IOPMP TR IF (Slv)
+    // Extended with IOPMP-specific signals
+    AXI_BUS_NSAID #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth  ),
+        .AXI_DATA_WIDTH ( AxiDataWidth  ),
+        .AXI_ID_WIDTH   ( AxiIdWidth    ),
+        .AXI_USER_WIDTH ( AxiUserWidth  )
+    ) idma_axi_master ();
+
+    `AXI_ASSIGN_TO_REQ(checker_inp_req, idma_axi_master)
+    `AXI_ASSIGN_FROM_RESP(idma_axi_master, checker_inp_rsp)
+
+    // Manually assign extension signals
+    // AW
+    assign checker_inp_req.aw.nsaid        = idma_axi_master.aw_nsaid;
+    // AR
+    assign checker_inp_req.ar.nsaid        = idma_axi_master.ar_nsaid;
+
+    dma_core_wrap #(
+        .AXI_ADDR_WIDTH     ( AxiAddrWidth               ),
+        .AXI_DATA_WIDTH     ( AxiDataWidth               ),
+        .AXI_USER_WIDTH     ( AxiUserWidth               ),
+        .AXI_ID_WIDTH       ( AxiIdWidth                 ),
+        .AXI_SLV_ID_WIDTH   ( ariane_axi_soc::IdWidthSlave),
+        
+        .BufferDepth        ( 64                         ),
+
+        .AR_NSAID           (2),
+        .AW_NSAID           (2)
+    ) i_dma (
+        .clk_i      		( clk_i            ),
+        .rst_ni     		( rst_ni           ),
+        .testmode_i 		( 1'b0             ),
+        // slave port
+        .axi_slave  		( dma_cfg          ),
+        // master port
+        .axi_master 		( idma_axi_master  )
+    );
+
+    if (InclChecker) begin
+        
+        wg_checker_top #(
+            .DATA_WIDTH (AxiDataWidth),
+            // width of addr bus in bits
+            .ADDR_WIDTH (AxiAddrWidth),
+            // width of axuser signal
+            .USER_WIDTH (AxiUserWidth),
+            // width of id signal
+            .ID_WIDTH   (AxiIdWidth),
+            // width of id signal
+            .ID_SLV_WIDTH (ariane_axi_soc::IdWidthSlave),
+            // AXI request/response
+            .axi_req_nsaid_t  (ariane_axi::req_nsaid_t),
+            .axi_rsp_t        (ariane_axi::resp_t),
+
+            /// AXI Full Slave request struct type
+            .axi_req_slv_t    (ariane_axi_soc::req_slv_t),
+            /// AXI Full Slave response struct type
+            .axi_rsp_slv_t    (ariane_axi_soc::resp_slv_t),
+
+            // AXI channel structs
+            .axi_aw_chan_t    (ariane_axi::aw_nsaid_chan_t),
+            .axi_w_chan_t     (ariane_axi::w_chan_t),
+            .axi_b_chan_t     (ariane_axi::b_chan_t),
+            .axi_ar_chan_t    (ariane_axi::ar_nsaid_chan_t),
+            .axi_r_chan_t     (ariane_axi::r_chan_t),
+
+            .N_SLOTS          (8)
+        ) i_wg_checker_top (
+            .clk_i  (clk_i),
+            .rst_ni (rst_ni),
+
+            // // AXI Config Slave port
+            .control_req_i  (checker_cp_req),
+            .control_rsp_o  (checker_cp_rsp),
+
+            // AXI Bus Slave port
+            .slv_req_i  (checker_inp_req),
+            .slv_rsp_o  (checker_inp_rsp),
+
+            // AXI Bus Master port
+            .mst_req_o  (checker_oup_req),
+            .mst_rsp_i  (checker_oup_rsp)
+
+            // output logic  wsi_wire_o
+        );
+    
+    end else begin
+        assign checker_oup_req = checker_inp_req;
+        assign checker_inp_rsp = checker_oup_rsp;
+
+
+        assign checker_cfg.aw_ready = 1'b0;
+        assign checker_cfg.ar_ready = 1'b0;
+        assign checker_cfg.w_ready  = 1'b0;
+
+        assign checker_cfg.b_id = '0;
+        assign checker_cfg.b_resp = axi_pkg::RESP_SLVERR;
+        assign checker_cfg.b_user = '0;
+        assign checker_cfg.b_valid = 1'b0;
+
+        assign checker_cfg.r_id = '0;
+        assign checker_cfg.r_data = '0;
+        assign checker_cfg.r_resp = axi_pkg::RESP_SLVERR;
+        assign checker_cfg.r_last = 1'b0;
+        assign checker_cfg.r_user = '0;
+        assign checker_cfg.r_valid = 1'b0;
+    end
+
 endmodule
