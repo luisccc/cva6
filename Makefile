@@ -99,7 +99,7 @@ endif
 # cv64a6_imafdc_sv39, cv32a6_imac_sv0, cv32a6_imac_sv32, cv32a6_imafc_sv32, cv32a6_ima_sv32_fpga
 # Changing the default target to cv32a60x for Step1 verification
 target     ?= cv64a6_imafdc_sv39
-ifeq ($(target), cv64a6_imafdc_sv39)
+ifeq ($(target), cv64a6_imafdch_sv39)
 	XLEN ?= 64
 else
 	XLEN ?= 32
@@ -120,7 +120,12 @@ ariane_pkg := \
               corev_apu/register_interface/src/reg_intf.sv           \
               corev_apu/tb/ariane_soc_pkg.sv                         \
               corev_apu/riscv-dbg/src/dm_pkg.sv                      \
-              corev_apu/tb/ariane_axi_soc_pkg.sv
+              corev_apu/tb/ariane_axi_soc_pkg.sv					 \
+			  corev_apu/iDMA/src/frontends/register_64bit/idma_reg64_frontend_reg_pkg.sv \
+			  corev_apu/iDMA/src/idma_pkg.sv                         \
+			  corev_apu/riscv-iopmp/packages/rv_iopmp/rv_iopmp_reg_pkg.sv \
+			  corev_apu/riscv-iopmp/packages/rv_iopmp/rv_iopmp_pkg.sv 
+
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
 
 # Test packages
@@ -166,6 +171,28 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         $(wildcard corev_apu/fpga/src/axi_slice/src/*.sv)                            \
         $(wildcard corev_apu/src/axi_riscv_atomics/src/*.sv)                         \
         $(wildcard corev_apu/axi_mem_if/src/*.sv)                                    \
+		$(wildcard corev_apu/register_interface/vendor/lowrisc_opentitan/src/*.sv)   \
+		$(wildcard corev_apu/iDMA/src/frontends/register_64bit/idma_reg64_frontend.sv)          \
+        $(wildcard corev_apu/iDMA/src/frontends/register_64bit/idma_reg64_frontend_reg_top.sv)  \
+		$(wildcard corev_apu/iDMA/src/idma_backend.sv)                                          \
+		$(wildcard corev_apu/iDMA/src/idma_legalizer.sv)                                        \
+		$(wildcard corev_apu/iDMA/src/idma_error_handler.sv)                                    \
+		$(wildcard corev_apu/iDMA/src/idma_stream_fifo.sv)                                      \
+		$(wildcard corev_apu/iDMA/src/idma_axi_transport_layer.sv)                              \
+		$(wildcard corev_apu/iDMA/src/idma_axi_lite_transport_layer.sv)                         \
+		$(wildcard corev_apu/iDMA/src/idma_obi_transport_layer.sv)                              \
+		$(wildcard corev_apu/iDMA/src/idma_channel_coupler.sv)                                  \
+		$(wildcard corev_apu/iDMA/src/idma_buffer.sv)                                           \
+		$(wildcard corev_apu/riscv-iopmp/rtl/rv_iopmp_top.sv)                                  \
+		$(wildcard corev_apu/riscv-iopmp/rtl/bridge/*.sv)                                  		\
+		$(wildcard corev_apu/riscv-iopmp/rtl/checker/*.sv)                                  		\
+		$(wildcard corev_apu/riscv-iopmp/rtl/regmap/*.sv)                                  		\
+		$(wildcard corev_apu/riscv-iopmp/vendor/wg_checker_axi_err_slv.sv)						\
+		corev_apu/iDMA/src/systems/cva6_reg/dma_core_wrap.sv                         \
+        corev_apu/iDMA/src/frontends/idma_transfer_id_gen.sv                         \
+        corev_apu/register_interface/src/axi_to_reg.sv                               \
+		vendor/pulp-platform/axi/src/axi_burst_splitter.sv							 \
+        corev_apu/register_interface/src/axi_lite_to_reg.sv                          \
         corev_apu/rv_plic/rtl/rv_plic_target.sv                                      \
         corev_apu/rv_plic/rtl/rv_plic_gateway.sv                                     \
         corev_apu/rv_plic/rtl/plic_regmap.sv                                         \
@@ -201,6 +228,10 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/common_cells/src/deprecated/fifo_v2.sv                  \
         vendor/pulp-platform/common_cells/src/stream_delay.sv                        \
         vendor/pulp-platform/common_cells/src/lfsr_16bit.sv                          \
+		vendor/pulp-platform/common_cells/src/id_queue.sv	                         \
+        vendor/pulp-platform/common_cells/src/onehot_to_bin.sv                       \
+        vendor/pulp-platform/common_cells/src/stream_fifo.sv	                     \
+        vendor/pulp-platform/common_cells/src/fall_through_register.sv	             \
         vendor/pulp-platform/tech_cells_generic/src/deprecated/cluster_clk_cells.sv  \
         vendor/pulp-platform/tech_cells_generic/src/deprecated/pulp_clk_cells.sv     \
         vendor/pulp-platform/tech_cells_generic/src/rtl/tc_clk.sv                    \
@@ -268,7 +299,8 @@ incdir := $(CVA6_REPO_DIR)/vendor/pulp-platform/common_cells/include/ $(CVA6_REP
           $(CVA6_REPO_DIR)/verif/core-v-verif/lib/uvm_agents/uvma_core_cntrl/ \
           $(CVA6_REPO_DIR)/verif/tb/core/ \
           $(CVA6_REPO_DIR)/core/include/ \
-          $(SPIKE_INSTALL_DIR)/include/disasm/
+          $(SPIKE_INSTALL_DIR)/include/disasm/ \
+		  $(CVA6_REPO_DIR)/corev_apu/iDMA/src/include/
 
 # Compile and sim flags
 compile_flag     += -incr -64 -nologo -quiet -suppress 13262 -suppress 8607 +permissive -svinputport=compat +define+$(defines) -suppress 8386 -suppress vlog-2577
