@@ -28,16 +28,18 @@ package ariane_soc;
   typedef enum int unsigned {
     DRAM     = 0,
     CHECKER_CFG  = 1, // DMA slave port for configuration of the engine
-    DMA_CFG  = 2, // DMA slave port for configuration of the engine
-    GPIO     = 3,
-    Ethernet = 4,
-    SPI      = 5,
-    Timer    = 6,
-    UART     = 7,
-    PLIC     = 8,
-    CLINT    = 9,
-    ROM      = 10,
-    Debug    = 11
+    PERF_MON_W = 2,
+    PERF_MON_R = 3,
+    DMA_CFG  = 4, // DMA slave port for configuration of the engine
+    GPIO     = 5,
+    Ethernet = 6,
+    SPI      = 7,
+    Timer    = 8,
+    UART     = 9,
+    PLIC     = 10,
+    CLINT    = 11,
+    ROM      = 12,
+    Debug    = 13
   } axi_slaves_t;
 
   localparam NB_PERIPHERALS = Debug + 1;
@@ -53,6 +55,7 @@ package ariane_soc;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h1000;
   localparam logic[63:0] DMALength      = 64'h1000;
+  localparam logic[63:0] PerfMonLength  = 64'h100;
   localparam logic[63:0] CheckerLength  = 64'h4000;
 `ifdef NEXYS_VIDEO
   localparam logic[63:0] DRAMLength     = 64'h20000000; // 512MByte of DDR on Nexys video board
@@ -74,6 +77,8 @@ package ariane_soc;
     EthernetBase = 64'h3000_0000,
     GPIOBase     = 64'h4000_0000,
     DMABase      = 64'h5000_0000,
+    PerfMonRBase = 64'h5000_1000,
+    PerfMonWBase = 64'h5000_1100,
     CheckerBase  = 64'h5001_0000,
     DRAMBase     = 64'h8000_0000
   } soc_bus_start_t;

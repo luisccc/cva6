@@ -32,6 +32,8 @@ module ariane_peripherals #(
     AXI_BUS.Slave      timer           ,
     AXI_BUS.Slave      checker_cfg     , // Checker configuration IF     (XBAR   => Checker  )
     AXI_BUS.Slave      dma_cfg         , // DMA Engine configuration IF     (XBAR   => DMA  )
+    AXI_BUS.Slave      perf_mon_w      , // DMA Engine configuration IF     (XBAR   => DMA  )
+    AXI_BUS.Slave      perf_mon_r      , // DMA Engine configuration IF     (XBAR   => DMA  )
     AXI_BUS.Master     dma_engine      , // IOPMP Initiator Port            (IOPMP  => XBAR )
     output logic [1:0] irq_o           ,
     // UART
@@ -727,6 +729,68 @@ module ariane_peripherals #(
         .mst_rsp_i  (checker_oup_rsp)
 
         // output logic  wsi_wire_o
+    );
+
+    // AXI Bus between System Interconnect (Mst) and perf monitor (Slv)
+    ariane_axi_soc::req_slv_t  perf_mon_w_req;
+    ariane_axi_soc::resp_slv_t perf_mon_w_rsp;
+    `AXI_ASSIGN_TO_REQ(perf_mon_w_req, perf_mon_w)
+    `AXI_ASSIGN_FROM_RESP(perf_mon_w, perf_mon_w_rsp)
+
+    perf_monitor_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        .ADDR_WIDTH (AxiAddrWidth),
+        .USER_WIDTH (AxiUserWidth),
+        .ID_SLV_WIDTH (ariane_axi_soc::IdWidthSlave),
+        
+        .axi_req_slv_t (ariane_axi_soc::req_slv_t),
+        .axi_rsp_slv_t (ariane_axi_soc::resp_slv_t)
+    ) i_w_perf_monitor_top (
+        .clk_i,
+        .rst_ni,
+
+        // // AXI Config Slave port
+        .control_req_i  (perf_mon_w_req),
+        .control_rsp_o  (perf_mon_w_rsp),
+
+        // AXI Bus Slave port
+        .inp_valid_i (checker_inp_req.aw_valid),
+        .inp_ready_i (checker_inp_rsp.aw_ready),
+
+        // AXI Bus Master port
+        .oup_valid_i (checker_oup_req.aw_valid),
+        .oup_ready_i (checker_oup_rsp.aw_ready)
+    );
+
+    // AXI Bus between System Interconnect (Mst) and perf monitor (Slv)
+    ariane_axi_soc::req_slv_t  perf_mon_r_req;
+    ariane_axi_soc::resp_slv_t perf_mon_r_rsp;
+    `AXI_ASSIGN_TO_REQ(perf_mon_r_req, perf_mon_r)
+    `AXI_ASSIGN_FROM_RESP(perf_mon_r, perf_mon_r_rsp)
+
+    perf_monitor_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        .ADDR_WIDTH (AxiAddrWidth),
+        .USER_WIDTH (AxiUserWidth),
+        .ID_SLV_WIDTH (ariane_axi_soc::IdWidthSlave),
+        
+        .axi_req_slv_t (ariane_axi_soc::req_slv_t),
+        .axi_rsp_slv_t (ariane_axi_soc::resp_slv_t)
+    ) i_r_perf_monitor_top (
+        .clk_i,
+        .rst_ni,
+
+        // // AXI Config Slave port
+        .control_req_i  (perf_mon_r_req),
+        .control_rsp_o  (perf_mon_r_rsp),
+
+        // AXI Bus Slave port
+        .inp_valid_i (checker_inp_req.ar_valid),
+        .inp_ready_i (checker_inp_rsp.ar_ready),
+
+        // AXI Bus Master port
+        .oup_valid_i (checker_oup_req.ar_valid),
+        .oup_ready_i (checker_oup_rsp.ar_ready)
     );
 
 endmodule

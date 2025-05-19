@@ -506,6 +506,8 @@ module ariane_testharness #(
     '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
     '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
     '{ idx: ariane_soc::DMA_CFG,  start_addr: ariane_soc::DMABase,      end_addr: ariane_soc::DMABase + ariane_soc::DMALength           },
+    '{ idx: ariane_soc::PERF_MON_R, start_addr: ariane_soc::PerfMonRBase, end_addr: ariane_soc::PerfMonRBase + ariane_soc::PerfMonLength },
+    '{ idx: ariane_soc::PERF_MON_W, start_addr: ariane_soc::PerfMonWBase, end_addr: ariane_soc::PerfMonWBase + ariane_soc::PerfMonLength },
     '{ idx: ariane_soc::CHECKER_CFG,  start_addr: ariane_soc::CheckerBase,      end_addr: ariane_soc::CheckerBase + ariane_soc::CheckerLength },
     '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
   };
@@ -599,6 +601,8 @@ module ariane_testharness #(
     .timer     ( master[ariane_soc::Timer]    ),
     .checker_cfg   ( master[ariane_soc::CHECKER_CFG]  ),
     .dma_cfg   ( master[ariane_soc::DMA_CFG]  ),
+    .perf_mon_w (master[ariane_soc::PERF_MON_W]),
+    .perf_mon_r (master[ariane_soc::PERF_MON_R]),
     .dma_engine( slave [ariane_soc::DMA]      ),
     .irq_o     ( irqs                         ),
     .rx_i      ( rx                           ),
