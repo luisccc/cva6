@@ -343,11 +343,15 @@ module csr_regfile
     assign conv_csr_addr = (CVA6Cfg.RVCSRIND) ? 
                            (riscv::convert_csrind_access(real_csr_addr, miselect_q, siselect_q, vsiselect_q)) :
                            (real_csr_addr);
+    assign is_csrind_access = (real_csr_addr != conv_csr_addr) ? (1'b1) : (1'b0);
+  end
+  else begin
+    assign conv_csr_addr = csr_addr;
+    assign is_csrind_access = (riscv::csr_t'(csr_addr_i) != conv_csr_addr) ? (1'b1) : (1'b0);
   end
   assign fs_o = mstatus_q.fs;
   assign vfs_o = (CVA6Cfg.RVH) ? vsstatus_q.fs : riscv::Off;
   assign vs_o = mstatus_q.vs;
-  assign is_csrind_access = (real_csr_addr != conv_csr_addr) ? (1'b1) : (1'b0);
   // ----------------
   // CSR Read logic
   // ----------------
@@ -760,7 +764,7 @@ module csr_regfile
         riscv::CSR_SPMPADDR61,
         riscv::CSR_SPMPADDR62,
         riscv::CSR_SPMPADDR63: begin
-          if (CVA6Cfg.RVH) begin
+          if (CVA6Cfg.RVS) begin
             // index is specified by the last byte in the address
             automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
             // We only support granularity 8 bytes (G=1)
@@ -1538,7 +1542,7 @@ module csr_regfile
           if ((CVA6Cfg.RVH) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
             if (is_csrind_access) begin
-              automatic int idx = vsiselect_q[5:0] + real_csr_addr[1];
+              automatic int idx = vsiselect_q[5:0]; // TODO: Subtract vsiselect spmp base
               vspmpcfg_d[idx] = csr_wdata[7:0];
             end
             else begin
@@ -1774,7 +1778,7 @@ module csr_regfile
           if ((CVA6Cfg.RVS) && 
               ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
             if (is_csrind_access) begin
-              automatic int idx = siselect_q[5:0] + real_csr_addr[1];
+              automatic int idx = siselect_q[5:0];  // TODO: Subtract siselect spmp base
               spmpcfg_d[idx] = csr_wdata[7:0];
             end
             else begin

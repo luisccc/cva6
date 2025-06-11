@@ -122,7 +122,7 @@ module spmp
                     if (spmpcfg_i[k].s_mode) begin
                         
                         // XWR
-                        unique case (spmpcfg_i[k].access_perm)
+                        case (spmpcfg_i[k].access_perm)
 
                             // Enforce for S-mode, deny for U-mode 
                             3'b001,
@@ -160,7 +160,7 @@ module spmp
                     else begin
                         
                         // XWR
-                        unique case (spmpcfg_i[k].access_perm)
+                        case (spmpcfg_i[k].access_perm)
 
                             // Deny for S-mode if sstatus.SUM = 0,
                             // Enforce without X for S-mode if sstatus.SUM = 1,
