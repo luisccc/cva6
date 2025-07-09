@@ -54,6 +54,12 @@ set_property -dict {PACKAGE_PIN AJ13 IOSTANDARD LVCMOS15} [get_ports { eth_rxd[3
 set_property -dict {PACKAGE_PIN AF12 IOSTANDARD LVCMOS15} [get_ports { eth_mdc }]; #IO_L23P_T3_33 Sch=eth_mdc
 set_property -dict {PACKAGE_PIN AG12 IOSTANDARD LVCMOS15} [get_ports { eth_mdio }]; #IO_L23N_T3_33 Sch=eth_mdio
 
+# create_clock -name mig_ui_clk -period 5.000 [get_pins i_ddr/ui_clk]
+# create_generated_clock -name clk_core \
+# 	-source [get_pins i_ddr/ui_clk] \
+# 	-period 3.571    \
+# 	[get_pins i_xlnx_clk_gen/clk_out1]
+
 # set_property -dict {PACKAGE_PIN AK15  IOSTANDARD LVCMOS18} [get_ports { eth_pme_b }]; #IO_L1N_T0_32 Sch=eth_pmeb
 # set_property -dict {PACKAGE_PIN AK16  IOSTANDARD LVCMOS18} [get_ports { eth_int_b }]; #IO_L1P_T0_32 Sch=eth_intb
 
