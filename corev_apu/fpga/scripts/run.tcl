@@ -94,7 +94,8 @@ exec rm -rf reports/*
 
 check_timing -verbose                                                   -file reports/$project.check_timing.rpt
 report_timing -max_paths 100 -nworst 100 -delay_type max -sort_by slack -file reports/$project.timing_WORST_100.rpt
-report_timing -nworst 1 -delay_type max -sort_by group                  -file reports/$project.timing.rpt
+# report_timing -nworst 1 -delay_type max -sort_by group                  -file reports/$project.timing.rpt
+report_timing -delay_type max -slack_less_than 0 -max_paths 10000 -sort_by slack -file reports/${project}.timing.rpt
 report_utilization -hierarchical                                        -file reports/$project.utilization.rpt
 report_cdc                                                              -file reports/$project.cdc.rpt
 report_clock_interaction                                                -file reports/$project.clock_interaction.rpt
@@ -119,5 +120,12 @@ exec mkdir -p reports/
 exec rm -rf reports/*
 check_timing                                                              -file reports/${project}.check_timing.rpt
 report_timing -max_paths 100 -nworst 100 -delay_type max -sort_by slack   -file reports/${project}.timing_WORST_100.rpt
-report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/${project}.timing.rpt
+# report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/${project}.timing.rpt
+# report_timing -delay_type max -slack_less_than 0 -max_paths 10000 -sort_by slack -file reports/${project}.timing.rpt
+
+set_false_path -through [get_cells -hierarchical -filter {NAME =~ "*i_wg_checker_prog_if*"}]
+report_timing -delay_type max -slack_less_than 0 -max_paths 10000 \
+  -from [get_pins -hierarchical -filter {NAME =~ "*i_ariane_peripherals/i_wg_checker_top/*"}] \
+  -to   [get_pins -hierarchical -filter {NAME =~ "*i_ariane_peripherals/i_wg_checker_top/*"}] \
+  -file reports/wg_checker_violations.rpt
 report_utilization -hierarchical                                          -file reports/${project}.utilization.rpt

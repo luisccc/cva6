@@ -58,3 +58,12 @@
 [submodule "corev_apu/wg_checker"]
 	path = corev_apu/wg_checker
 	url = git@github.com:zero-day-labs/wg_checker.git
+[submodule "corev_apu/generic_reader_writer"]
+	path = corev_apu/generic_reader_writer
+	url = git@github.com:luisccc/generic_reader_writer.git
+[submodule "corev_apu/bus_perf_monitor"]
+	path = corev_apu/bus_perf_monitor
+	url = git@github.com:luisccc/bus_perf_monitor.git
+[submodule "corev_apu/iDMA"]
+	path = corev_apu/iDMA
+	url = git@github.com:luisccc/iDMA.git

@@ -124,7 +124,9 @@ ariane_pkg := \
 			  corev_apu/iDMA/src/frontends/register_64bit/idma_reg64_frontend_reg_pkg.sv \
 			  corev_apu/iDMA/src/idma_pkg.sv                         \
 			  corev_apu/wg_checker/packages/wg_checker/wg_checker_reg_pkg.sv \
-			  corev_apu/wg_checker/packages/wg_checker/wg_checker_pkg.sv 
+			  corev_apu/wg_checker/packages/wg_checker/wg_checker_pkg.sv  \
+			  corev_apu/bus_perf_monitor/packages/perf_monitor/perf_monitor_reg_pkg.sv \
+			  corev_apu/generic_reader_writer/packages/generic_reader_writer/generic_reader_writer_reg_pkg.sv
 
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
 
@@ -188,6 +190,19 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
 		$(wildcard corev_apu/wg_checker/rtl/checker/*.sv)                                  		\
 		$(wildcard corev_apu/wg_checker/rtl/regmap/*.sv)                                  		\
 		$(wildcard corev_apu/wg_checker/vendor/wg_checker_axi_err_slv.sv)						\
+		$(wildcard corev_apu/wg_checker/vendor/axi_to_reg_v2.sv)								\
+		$(wildcard corev_apu/wg_checker/vendor/axi_to_detailed_mem.sv)							\
+		$(wildcard corev_apu/wg_checker/vendor/periph_to_reg.sv)								\
+		$(wildcard corev_apu/wg_checker/vendor/reg_demux.sv)									\
+		$(wildcard corev_apu/wg_checker/vendor/reg_mux.sv)										\
+		$(wildcard corev_apu/wg_checker/vendor/stream_fork.sv)									\
+		$(wildcard corev_apu/wg_checker/vendor/stream_fork_dynamic.sv)							\
+		$(wildcard corev_apu/wg_checker/vendor/stream_join.sv)									\
+		$(wildcard corev_apu/wg_checker/vendor/stream_join_dynamic.sv)							\
+		$(wildcard corev_apu/bus_perf_monitor/rtl/regmap/*.sv)						 \
+		$(wildcard corev_apu/bus_perf_monitor/rtl/perf_monitor_top.sv)				 \
+		$(wildcard corev_apu/generic_reader_writer/rtl/*.sv)				 		 \
+		$(wildcard corev_apu/generic_reader_writer/rtl/regmap/*.sv)				 	 \
 		corev_apu/iDMA/src/systems/cva6_reg/dma_core_wrap.sv                         \
         corev_apu/iDMA/src/frontends/idma_transfer_id_gen.sv                         \
         corev_apu/register_interface/src/axi_to_reg.sv                               \
