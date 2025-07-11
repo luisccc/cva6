@@ -125,7 +125,8 @@ ariane_pkg := \
 			  corev_apu/iDMA/src/idma_pkg.sv                         \
 			  corev_apu/riscv-iopmp/packages/rv_iopmp/rv_iopmp_reg_pkg.sv \
 			  corev_apu/riscv-iopmp/packages/rv_iopmp/rv_iopmp_pkg.sv \
-			  corev_apu/bus_perf_monitor/packages/perf_monitor/perf_monitor_reg_pkg.sv 
+			  corev_apu/bus_perf_monitor/packages/perf_monitor/perf_monitor_reg_pkg.sv \
+			  corev_apu/generic_reader_writer/packages/generic_reader_writer/generic_reader_writer_reg_pkg.sv 
 
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
 
@@ -191,6 +192,8 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
 		$(wildcard corev_apu/riscv-iopmp/vendor/wg_checker_axi_err_slv.sv)						\
 		$(wildcard corev_apu/bus_perf_monitor/rtl/regmap/*.sv)						 \
 		$(wildcard corev_apu/bus_perf_monitor/rtl/perf_monitor_top.sv)				 \
+		$(wildcard corev_apu/generic_reader_writer/rtl/*.sv)				 		 \
+		$(wildcard corev_apu/generic_reader_writer/rtl/regmap/*.sv)				 	 \
 		corev_apu/iDMA/src/systems/cva6_reg/dma_core_wrap.sv                         \
         corev_apu/iDMA/src/frontends/idma_transfer_id_gen.sv                         \
         corev_apu/register_interface/src/axi_to_reg.sv                               \

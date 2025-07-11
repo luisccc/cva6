@@ -64,3 +64,6 @@
 [submodule "corev_apu/bus_perf_monitor"]
 	path = corev_apu/bus_perf_monitor
 	url = git@github.com:luisccc/bus_perf_monitor.git
+[submodule "corev_apu/generic_reader_writer"]
+	path = corev_apu/generic_reader_writer
+	url = git@github.com:luisccc/generic_reader_writer.git

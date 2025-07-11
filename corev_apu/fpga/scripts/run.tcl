@@ -120,4 +120,5 @@ exec rm -rf reports/*
 check_timing                                                              -file reports/${project}.check_timing.rpt
 report_timing -max_paths 100 -nworst 100 -delay_type max -sort_by slack   -file reports/${project}.timing_WORST_100.rpt
 report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/${project}.timing.rpt
+report_timing -delay_type max -slack_less_than 0 -max_paths 10000 -from [get_pins -hierarchical -filter {NAME =~ "*i_ariane_peripherals/i_rv_iopmp_top/*"}] -to   [get_pins -hierarchical -filter {NAME =~ "*i_ariane_peripherals/i_rv_iopmp_top/*"}] -file reports/${project}.iopmp_violations.rpt
 report_utilization -hierarchical                                          -file reports/${project}.utilization.rpt
