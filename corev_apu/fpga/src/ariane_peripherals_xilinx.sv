@@ -1038,7 +1038,8 @@ module ariane_peripherals #(
             .axi_ar_chan_t    (ariane_axi::ar_nsaid_chan_t),
             .axi_r_chan_t     (ariane_axi::r_chan_t),
 
-            .N_SLOTS          (wg_checker_reg_pkg::N_SLOTS)
+            .N_SLOTS          (wg_checker_reg_pkg::N_SLOTS),
+            .N_WIDS           (wg_checker_reg_pkg::N_WIDS)
         ) i_wg_checker_top (
             .clk_i  (clk_i),
             .rst_ni (rst_ni),
