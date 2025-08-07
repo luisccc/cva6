@@ -564,12 +564,13 @@ module cva6
   logic acc_cons_en_csr;
   logic debug_mode;
   logic single_step_csr_commit;
-  riscv::pmpcfg_t [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0] pmpcfg;
-  logic [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr;
+  riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg;
+  logic [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
   riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg, vspmpcfg;
-  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr, vspmpaddr;
-  logic [63:0] spmpswitch, hspmpswitch, vspmpswitch;
+  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr;
+  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch;
+  logic [63:0] hspmpswitch, vspmpswitch;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -1015,8 +1016,6 @@ module cva6
       .vs_asid_i               (vs_asid_csr_ex),                 // from CSR
       .hgatp_ppn_i             (hgatp_ppn_csr_ex),               // from CSR
       .vmid_i                  (vmid_csr_ex),                    // from CSR
-      .sseccfg_smaa_i          (sseccfg_smaa),
-      .vsseccfg_smaa_i         (vsseccfg_smaa),
       .icache_areq_i           (icache_areq_cache_ex),
       .icache_areq_o           (icache_areq_ex_cache),
       // DCACHE interfaces
@@ -1029,7 +1028,6 @@ module cva6
       .pmpaddr_i               (pmpaddr),
       // SPMP
       .spmpcfg_i               (spmpcfg),
-      .spmpaddr_i              (spmpaddr),
       .spmpswitch_i            (spmpswitch),
       .hspmpswitch_i           (hspmpswitch),
       .vspmpcfg_i              (vspmpcfg),
@@ -1156,8 +1154,6 @@ module cva6
       .vs_asid_o               (vs_asid_csr_ex),
       .hgatp_ppn_o             (hgatp_ppn_csr_ex),
       .vmid_o                  (vmid_csr_ex),
-      .sseccfg_smaa_o          (sseccfg_smaa),
-      .vsseccfg_smaa_o         (vsseccfg_smaa),
       .irq_i,
       .ipi_i,
       .debug_req_i,
@@ -1179,7 +1175,6 @@ module cva6
       .pmpcfg_o                (pmpcfg),
       .pmpaddr_o               (pmpaddr),
       .spmpcfg_o               (spmpcfg),
-      .spmpaddr_o              (spmpaddr),
       .spmpswitch_o            (spmpswitch),
       .hspmpswitch_o           (hspmpswitch),
       .vspmpcfg_o              (vspmpcfg),
@@ -1487,6 +1482,9 @@ module cva6
   // Accelerator
   // ----------------
 
+  localparam int unsigned PMPHighIdx = (CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0);
+  localparam int unsigned PMPLowIdx = 0;
+
   if (CVA6Cfg.EnableAccelerator) begin : gen_accelerator
     acc_dispatcher #(
         .CVA6Cfg           (CVA6Cfg),
@@ -1511,8 +1509,8 @@ module cva6
         .acc_fflags_o          (acc_resp_fflags),
         .ld_st_priv_lvl_i      (ld_st_priv_lvl_csr_ex),
         .sum_i                 (sum_csr_ex),
-        .pmpcfg_i              (pmpcfg),
-        .pmpaddr_i             (pmpaddr),
+        .pmpcfg_i              (pmpcfg[PMPHighIdx:PMPLowIdx]),
+        .pmpaddr_i             (pmpaddr[PMPHighIdx:PMPLowIdx]),
         .fcsr_frm_i            (frm_csr_id_issue_ex),
         .dirty_v_state_o       (dirty_v_state),
         .issue_instr_i         (issue_instr_id_acc),

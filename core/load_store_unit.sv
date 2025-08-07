@@ -117,10 +117,6 @@ module load_store_unit
     input  logic             [      CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
-    // Supervisor Security Configuration
-    input  logic                                      sseccfg_smaa_i,
-    // Virtual Supervisor Security Configuration
-    input  logic                                      vsseccfg_smaa_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [CVA6Cfg.ASID_WIDTH-1:0] asid_to_be_flushed_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -152,24 +148,23 @@ module load_store_unit
     input  amo_resp_t           amo_resp_i,
 
     // PMP configuration - CSR_REGFILE
-    input riscv::pmpcfg_t [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0] pmpcfg_i,
+    input  riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg_i,
     // PMP address - CSR_REGFILE
-    input logic           [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
+    input  logic           [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
 
-    // SPMP configuration
-    input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_i,
-    // SPMP addresses
-    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
-    // SPMP switch
-    input logic [63:0] spmpswitch_i,
+    // SPMP configuration - CSR_REGFILE
+    input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
+    // SPMP switch - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
+
     // hSPMP switch
-    input logic [63:0] hspmpswitch_i,
+    input  logic [63:0] hspmpswitch_i,
     // vSPMP configuration
-    input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
+    input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
     // vSPMP addresses
-    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_i,
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_i,
     // vSPMP switch
-    input logic [63:0] vspmpswitch_i,
+    input  logic [63:0] vspmpswitch_i,
 
     // RVFI inforamtion - RVFI
     output lsu_ctrl_t                    rvfi_lsu_ctrl_o,
@@ -257,6 +252,10 @@ module load_store_unit
   logic [CVA6Cfg.PPNW-1:0] satp_ppn[2:0];
   logic [CVA6Cfg.ASID_WIDTH-1:0] asid[2:0], asid_to_be_flushed[1:0];
   logic [CVA6Cfg.VLEN-1:0] vaddr_to_be_flushed[1:0];
+
+  localparam int unsigned PMPHighIdx = (CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0);
+  localparam int unsigned PMPLowIdx = 0;
+
   // -------------------
   // MMU e.g.: TLBs/PTW
   // -------------------
@@ -330,8 +329,8 @@ module load_store_unit
         .req_port_i(dcache_req_ports_i[0]),
         .req_port_o(dcache_req_ports_o[0]),
 
-        .pmpcfg_i,
-        .pmpaddr_i
+        .pmpcfg_i(pmpcfg_i[PMPHighIdx:PMPLowIdx]),
+        .pmpaddr_i(pmpaddr_i[PMPHighIdx:PMPLowIdx])
     );
   end else begin : gen_no_mmu
 
@@ -339,6 +338,9 @@ module load_store_unit
     // SPMP / vSPMP
     //--------------
     if (CVA6Cfg.SpmpPresent) begin : gen_spmp
+
+      localparam int unsigned SPMPHighIdx = CVA6Cfg.NrPMPResource-1;
+      localparam int unsigned SPMPLowIdx = (CVA6Cfg.NrPMPResource > CVA6Cfg.NrPMPEntries ? CVA6Cfg.NrPMPEntries : CVA6Cfg.NrPMPResource-1);
 
       // Double-stage SPMP
       if (CVA6Cfg.RVH) begin : gen_double_spmp
@@ -356,8 +358,8 @@ module load_store_unit
           .v_i              (v_i),
           .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
           .ld_st_v_i        (ld_st_v_i),
-          .sseccfg_smaa_i   (sseccfg_smaa_i),
-          .vsseccfg_smaa_i  (vsseccfg_smaa_i),
+          .sseccfg_smaa_i   (1'b0),
+          .vsseccfg_smaa_i  (1'b0),
           .sum_i            (sum_i),
           .vs_sum_i         (vs_sum_i),
           .mxr_i            (mxr_i),
@@ -381,7 +383,7 @@ module load_store_unit
           .lsu_exception_o  (pmp_exception),
 
           .spmpcfg_i        (spmpcfg_i),
-          .spmpaddr_i       (spmpaddr_i),
+          .spmpaddr_i       ('0),
           .spmpswitch_i     (spmpswitch_i),
           .hspmpswitch_i    (hspmpswitch_i),
           .vspmpcfg_i       (vspmpcfg_i),
@@ -404,7 +406,6 @@ module load_store_unit
 
           .priv_lvl_i       (priv_lvl_i),
           .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
-          .sseccfg_smaa_i   (sseccfg_smaa_i),
           .sum_i            (sum_i),
           .mxr_i            (mxr_i),
           .mmu_enabled_i    (1'b0),
@@ -423,8 +424,9 @@ module load_store_unit
           .lsu_paddr_o      (lsu_paddr),
           .lsu_exception_o  (pmp_exception),
 
+          .pmpcfg_i         (pmpcfg_i[SPMPHighIdx:SPMPLowIdx]),
           .spmpcfg_i        (spmpcfg_i),
-          .spmpaddr_i       (spmpaddr_i),
+          .spmpaddr_i       (pmpaddr_i[SPMPHighIdx:SPMPLowIdx]),
           .spmpswitch_i     (spmpswitch_i)
         );
       end : gen_single_spmp
@@ -505,8 +507,8 @@ module load_store_unit
       .v_i                 (v_i),
       .ld_st_priv_lvl_i    (ld_st_priv_lvl_i),
       .ld_st_v_i           (ld_st_v_i),
-      .pmpcfg_i            (pmpcfg_i),
-      .pmpaddr_i           (pmpaddr_i)
+      .pmpcfg_i            (pmpcfg_i[PMPHighIdx:PMPLowIdx]),
+      .pmpaddr_i           (pmpaddr_i[PMPHighIdx:PMPLowIdx])
   );
 
   logic store_buffer_empty;

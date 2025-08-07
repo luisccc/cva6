@@ -7,10 +7,10 @@ source verif/sim/setup-env.sh
 
 export NUM_JOBS=12
 
-# TRACE=""
-TRACE="DEBUG=1 TRACE_FAST=1"
+TRACE=""
+# TRACE="DEBUG=1 TRACE_FAST=1"
 
-TARGET="cv64a6_imafdch_sv39"
+TARGET="cv64a6_imafdc_sv39"
 ELF_PATH="/home/manuale97/sPMP/riscv-hyp-tests/build/cva6/rvh_test.elf"
 LOG="spmp_log"
 

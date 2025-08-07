@@ -201,10 +201,6 @@ module ex_stage
     input logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_i,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_i,
-    // Supervisor Security Configuration
-    input logic sseccfg_smaa_i,
-    // Virtual Supervisor Security Configuration
-    input logic vsseccfg_smaa_i,
     // icache translation response - CACHE
     input icache_arsp_t icache_areq_i,
     // icache translation request - CACHE
@@ -226,15 +222,13 @@ module ex_stage
     // To count the data TLB misses - PERF_COUNTERS
     output logic dtlb_miss_o,
     // Report the PMP configuration - CSR_REGFILE
-    input riscv::pmpcfg_t [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0] pmpcfg_i,
+    input riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg_i,
     // Report the PMP addresses - CSR_REGFILE
-    input logic [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
+    input logic [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
     // SPMP configuration
     input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_i,
-    // SPMP addresses
-    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
     // SPMP switch
-    input logic [63:0] spmpswitch_i,
+    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
     // hSPMP switch
     input logic [63:0] hspmpswitch_i,
     // vSPMP configuration
@@ -591,8 +585,6 @@ module ex_stage
       .vs_asid_i,
       .asid_to_be_flushed_i  (asid_to_be_flushed),
       .vmid_i,
-      .sseccfg_smaa_i,
-      .vsseccfg_smaa_i,
       .vmid_to_be_flushed_i  (vmid_to_be_flushed),
       .vaddr_to_be_flushed_i (vaddr_to_be_flushed),
       .gpaddr_to_be_flushed_i(gpaddr_to_be_flushed),
@@ -612,7 +604,6 @@ module ex_stage
       .pmpcfg_i,
       .pmpaddr_i,
       .spmpcfg_i,
-      .spmpaddr_i,
       .spmpswitch_i,
       .hspmpswitch_i,
       .vspmpcfg_i,

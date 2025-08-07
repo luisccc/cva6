@@ -28,7 +28,6 @@ module spmp_interface #(
     // CSR data
     input  riscv::priv_lvl_t priv_lvl_i,
     input  riscv::priv_lvl_t ld_st_priv_lvl_i,
-    input  logic sseccfg_smaa_i,
     input  logic sum_i,
     input  logic mxr_i,
     input  logic mmu_enabled_i,
@@ -49,9 +48,10 @@ module spmp_interface #(
     output exception_t lsu_exception_o,
 
     // SPMP CSRs
-    input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_i,
-    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
-    input logic [63:0] spmpswitch_i
+    input  riscv::pmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] pmpcfg_i,
+    input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i
 );
 
     //---------
@@ -167,10 +167,10 @@ module spmp_interface #(
         .addr_i             (if_req_addr),
         .access_type_i      (riscv::ACCESS_EXEC),
         .priv_lvl_i         (priv_lvl_i),
-        .smaa_i             (sseccfg_smaa_i),
         .sum_i              (sum_i),
         .mxr_i              (1'b0),
         .mmu_enabled_i      (mmu_enabled_i),
+        .pmpcfg_i           (pmpcfg_i),
         .spmpcfg_i          (spmpcfg_i),
         .spmpaddr_i         (spmpaddr_i),
         .spmpswitch_i       (spmpswitch_i),
@@ -184,10 +184,10 @@ module spmp_interface #(
         .addr_i             (lsu_req_addr),
         .access_type_i      (access_type),
         .priv_lvl_i         (ld_st_priv_lvl_i),
-        .smaa_i             (sseccfg_smaa_i),
         .sum_i              (sum_i),
         .mxr_i              (mxr_i),
         .mmu_enabled_i      (mmu_enabled_i),
+        .pmpcfg_i           (pmpcfg_i),
         .spmpcfg_i          (spmpcfg_i),
         .spmpaddr_i         (spmpaddr_i),
         .spmpswitch_i       (spmpswitch_i),
