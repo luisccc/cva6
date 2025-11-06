@@ -154,17 +154,14 @@ module load_store_unit
 
     // SPMP configuration - CSR_REGFILE
     input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
+    // vSPMP configuration
+    input  riscv::spmpcfg_t [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpcfg_i,
     // SPMP switch - CSR_REGFILE
     input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
-
-    // hSPMP switch
-    input  logic [63:0] hspmpswitch_i,
-    // vSPMP configuration
-    input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
-    // vSPMP addresses
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_i,
-    // vSPMP switch
-    input  logic [63:0] vspmpswitch_i,
+    // vSPMP switch - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpswitch_i,
+    // hSPMP switch - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpswitch_i,
 
     // RVFI inforamtion - RVFI
     output lsu_ctrl_t                    rvfi_lsu_ctrl_o,
@@ -334,13 +331,10 @@ module load_store_unit
     );
   end else begin : gen_no_mmu
 
-    //--------------
-    // SPMP / vSPMP
-    //--------------
+    //------
+    // SPMP
+    //------
     if (CVA6Cfg.SpmpPresent) begin : gen_spmp
-
-      localparam int unsigned SPMPHighIdx = CVA6Cfg.NrPMPResource-1;
-      localparam int unsigned SPMPLowIdx = (CVA6Cfg.NrPMPResource > CVA6Cfg.NrPMPEntries ? CVA6Cfg.NrPMPEntries : CVA6Cfg.NrPMPResource-1);
 
       // Double-stage SPMP
       if (CVA6Cfg.RVH) begin : gen_double_spmp
@@ -358,8 +352,6 @@ module load_store_unit
           .v_i              (v_i),
           .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
           .ld_st_v_i        (ld_st_v_i),
-          .sseccfg_smaa_i   (1'b0),
-          .vsseccfg_smaa_i  (1'b0),
           .sum_i            (sum_i),
           .vs_sum_i         (vs_sum_i),
           .mxr_i            (mxr_i),
@@ -382,13 +374,13 @@ module load_store_unit
           .lsu_paddr_o      (lsu_paddr),
           .lsu_exception_o  (pmp_exception),
 
+          .pmpcfg_i         (pmpcfg_i),
+          .pmpaddr_i        (pmpaddr_i),
           .spmpcfg_i        (spmpcfg_i),
-          .spmpaddr_i       ('0),
-          .spmpswitch_i     (spmpswitch_i),
-          .hspmpswitch_i    (hspmpswitch_i),
           .vspmpcfg_i       (vspmpcfg_i),
-          .vspmpaddr_i      (vspmpaddr_i),
-          .vspmpswitch_i    (vspmpswitch_i)
+          .spmpswitch_i     (spmpswitch_i),
+          .vspmpswitch_i    (vspmpswitch_i),
+          .hspmpswitch_i    (hspmpswitch_i)
         );
       end : gen_double_spmp
 
@@ -424,9 +416,9 @@ module load_store_unit
           .lsu_paddr_o      (lsu_paddr),
           .lsu_exception_o  (pmp_exception),
 
-          .pmpcfg_i         (pmpcfg_i[SPMPHighIdx:SPMPLowIdx]),
+          .pmpcfg_i         (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
           .spmpcfg_i        (spmpcfg_i),
-          .spmpaddr_i       (pmpaddr_i[SPMPHighIdx:SPMPLowIdx]),
+          .spmpaddr_i       (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
           .spmpswitch_i     (spmpswitch_i)
         );
       end : gen_single_spmp

@@ -74,6 +74,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigSpmpPresent = 1;
   localparam CVA6ConfigPMPNum = 8;
+  localparam CVA6ConfigPMPNumHyp = 0;
   localparam CVA6ConfigSPMPSwitchOptEn = 1;
 
   localparam CVA6ConfigRvfiTrace = 1;
@@ -131,6 +132,7 @@ package cva6_config_pkg;
       PMPNapotEn: bit'(1),
       SpmpPresent: bit'(CVA6ConfigSpmpPresent),
       PMPNum: unsigned'(CVA6ConfigPMPNum),
+      PMPNumHyp: unsigned'(CVA6ConfigPMPNumHyp),
       SPMPSwitchOptEn: bit'(CVA6ConfigSPMPSwitchOptEn),
       SPMPCfgRstVal: {64{64'h0}},
       NOCType: config_pkg::NOC_TYPE_AXI4_ATOP,

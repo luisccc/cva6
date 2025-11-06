@@ -413,8 +413,8 @@ package riscv;
     CSR_VSIREG5          = 12'h256,
     CSR_VSIREG6          = 12'h257,
     CSR_VSATP            = 12'h280,
-    CSR_VSPMPSWITCH0     = 12'hA50,
-    CSR_VSPMPSWITCH1     = 12'hA51,
+    CSR_VSPMPSWITCH      = 12'hA50,
+    CSR_VSPMPSWITCHH     = 12'hA51,
     // Supervisor Mode CSRs
     CSR_SSTATUS          = 12'h100,
     CSR_SIE              = 12'h104,
@@ -434,9 +434,8 @@ package riscv;
     CSR_SIREG5           = 12'h156,
     CSR_SIREG6           = 12'h157,
     CSR_SATP             = 12'h180,
-    CSR_SPMPDELEG        = 12'h1F0,
-    CSR_SPMPSWITCH       = 12'h550,
-    CSR_SPMPSWITCHH      = 12'h551,
+    CSR_SSPMPSWITCH      = 12'h550,
+    CSR_SSPMPSWITCHH     = 12'h551,
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
     CSR_HEDELEG          = 12'h602,
@@ -452,8 +451,9 @@ package riscv;
     CSR_HENVCFG          = 12'h60A,
     CSR_HENVCFGH         = 12'h61A,
     CSR_HGATP            = 12'h680,
-    CSR_HSPMPSWITCH0     = 12'h682,
-    CSR_HSPMPSWITCH1     = 12'h683,
+    CSR_HSPMPDELEG       = 12'h681,
+    CSR_HSPMPSWITCH      = 12'h682,
+    CSR_HSPMPSWITCHH     = 12'h683,
     CSR_HCONTEXT         = 12'h6A8,
     CSR_HTIMEDELTA       = 12'h605,
     CSR_HTIMEDELTAH      = 12'h615,
@@ -1265,7 +1265,7 @@ package riscv;
     csr_t ret;
     ret = csr_addr;
     unique case (csr_addr.address) inside
-      [CSR_SSTATUS : CSR_STVEC], [CSR_SSCRATCH : CSR_SATP], [CSR_SPMPCFG0 : CSR_SPMPSWITCHH]: begin
+      [CSR_SSTATUS : CSR_STVEC], [CSR_SSCRATCH : CSR_SATP], [CSR_SSPMPSWITCH : CSR_SSPMPSWITCHH]: begin
         if (v) begin
           ret.csr_decode.priv_lvl = PRIV_LVL_HS;
         end

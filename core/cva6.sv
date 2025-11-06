@@ -567,10 +567,11 @@ module cva6
   riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg;
   logic [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
-  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg, vspmpcfg;
-  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr;
+  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg;
+  riscv::spmpcfg_t [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpcfg;
   logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch;
-  logic [63:0] hspmpswitch, vspmpswitch;
+  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpswitch;
+  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpswitch;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -1028,11 +1029,10 @@ module cva6
       .pmpaddr_i               (pmpaddr),
       // SPMP
       .spmpcfg_i               (spmpcfg),
-      .spmpswitch_i            (spmpswitch),
-      .hspmpswitch_i           (hspmpswitch),
       .vspmpcfg_i              (vspmpcfg),
-      .vspmpaddr_i             (vspmpaddr),
+      .spmpswitch_i            (spmpswitch),
       .vspmpswitch_i           (vspmpswitch),
+      .hspmpswitch_i           (hspmpswitch),
       //RVFI
       .rvfi_lsu_ctrl_o         (rvfi_lsu_ctrl),
       .rvfi_mem_paddr_o        (rvfi_mem_paddr)
@@ -1175,11 +1175,10 @@ module cva6
       .pmpcfg_o                (pmpcfg),
       .pmpaddr_o               (pmpaddr),
       .spmpcfg_o               (spmpcfg),
-      .spmpswitch_o            (spmpswitch),
-      .hspmpswitch_o           (hspmpswitch),
       .vspmpcfg_o              (vspmpcfg),
-      .vspmpaddr_o             (vspmpaddr),
+      .spmpswitch_o            (spmpswitch),
       .vspmpswitch_o           (vspmpswitch), 
+      .hspmpswitch_o           (hspmpswitch),
       .mcountinhibit_o         (mcountinhibit_csr_perf),
       //RVFI
       .rvfi_csr_o              (rvfi_csr)
@@ -1509,8 +1508,8 @@ module cva6
         .acc_fflags_o          (acc_resp_fflags),
         .ld_st_priv_lvl_i      (ld_st_priv_lvl_csr_ex),
         .sum_i                 (sum_csr_ex),
-        .pmpcfg_i              (pmpcfg[PMPHighIdx:PMPLowIdx]),
-        .pmpaddr_i             (pmpaddr[PMPHighIdx:PMPLowIdx]),
+        .pmpcfg_i              (pmpcfg[CVA6Cfg.PMPNum-1:0]),
+        .pmpaddr_i             (pmpaddr[CVA6Cfg.PMPNum-1:0]),
         .fcsr_frm_i            (frm_csr_id_issue_ex),
         .dirty_v_state_o       (dirty_v_state),
         .issue_instr_i         (issue_instr_id_acc),

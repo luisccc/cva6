@@ -112,7 +112,12 @@ package build_config_pkg;
     cfg.PMPNapotEn = CVA6Cfg.PMPNapotEn;
     cfg.SpmpPresent = CVA6Cfg.SpmpPresent;
     cfg.NrPMPResource = CVA6Cfg.NrPMPEntries;
-    cfg.NrSPMPEntries = (CVA6Cfg.SpmpPresent) ? (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum) : 0;
+    cfg.NrSPMPEntries = (CVA6Cfg.SpmpPresent) ? 
+                          (CVA6Cfg.RVH ? CVA6Cfg.PMPNumHyp : (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum)) 
+                          : 0;
+    cfg.NrVSPMPEntries = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVH) ? 
+                          (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum - CVA6Cfg.PMPNumHyp) 
+                          : 0;
     cfg.SPMPSwitchOptEn = CVA6Cfg.SPMPSwitchOptEn;
     cfg.SPMPCfgRstVal = CVA6Cfg.SPMPCfgRstVal;
     cfg.NOCType = CVA6Cfg.NOCType;

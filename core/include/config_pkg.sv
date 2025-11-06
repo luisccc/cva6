@@ -120,8 +120,10 @@ package config_pkg;
     bit                          PMPNapotEn;
     // SPMP extension enable
     bit                          SpmpPresent;
-    // SPMP/PMP entries split delimiter
+    // Number of M-mode PMP entries
     int unsigned                 PMPNum;
+    // Number of HS-mode SPMP entries
+    int unsigned                 PMPNumHyp;
     // SPMP context-switching optimization
     bit                          SPMPSwitchOptEn;
     // SPMP configuration CSR reset values
@@ -314,6 +316,7 @@ package config_pkg;
     bit                          SpmpPresent;
     int unsigned                 NrPMPResource;
     int unsigned                 NrSPMPEntries;
+    int unsigned                 NrVSPMPEntries;
     bit                          SPMPSwitchOptEn;
     logic [63:0][63:0]           SPMPCfgRstVal;
     noc_type_e                   NOCType;
@@ -402,7 +405,6 @@ package config_pkg;
     assert (Cfg.NrCachedRegionRules <= NrMaxRules);
     assert (Cfg.NrPMPEntries <= 64);
     assert (!Cfg.SpmpPresent || (Cfg.SpmpPresent && Cfg.RVCSRIND));
-    assert (Cfg.NrSPMPEntries <= 64);
     assert (!(Cfg.SuperscalarEn && Cfg.RVF));
     assert (!(Cfg.SuperscalarEn && Cfg.RVZCMP));
     assert (Cfg.FETCH_WIDTH == 32 || Cfg.FETCH_WIDTH == 64)
