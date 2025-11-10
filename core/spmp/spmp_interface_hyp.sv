@@ -75,13 +75,13 @@ module spmp_interface_hyp #(
 
     always_comb begin : if_spmp
 
-        if_req_addr = (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) ?
+        if_req_addr = (CVA6Cfg.VLEN > CVA6Cfg.PLEN) ?
                         (if_req_i.fetch_vaddr[CVA6Cfg.PLEN-1:0]) :
                         (CVA6Cfg.PLEN'(if_req_i.fetch_vaddr));
 
         if_ex_addr  = (CVA6Cfg.VLEN > CVA6Cfg.PLEN) ? 
-                        {{8{1'b0}}, if_req_addr}:
-                        (if_req_addr[CVA6Cfg.VLEN-1:0]);
+                        CVA6Cfg.XLEN'(if_req_addr):
+                        (if_req_addr[CVA6Cfg.XLEN-1:0]);
 
         if_ex_gpaddr = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
                         (if_req_addr[CVA6Cfg.GPLEN-1:0]):
@@ -141,7 +141,7 @@ module spmp_interface_hyp #(
 
     always_comb begin : lsu_spmp
 
-        lsu_req_addr    = (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) ?
+        lsu_req_addr    = (CVA6Cfg.VLEN > CVA6Cfg.PLEN) ?
                           (lsu_vaddr_i[CVA6Cfg.PLEN-1:0]) :
                           (CVA6Cfg.PLEN'(lsu_vaddr_i));
         access_type     = (lsu_is_store_i) ? 
@@ -158,8 +158,8 @@ module spmp_interface_hyp #(
         lsu_req_d  = lsu_valid_i;
 
         lsu_ex_addr     = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
-                          {{8{1'b0}}, lsu_data_q.addr}:
-                          (lsu_data_q.addr[CVA6Cfg.VLEN-1:0]);
+                          CVA6Cfg.XLEN'(lsu_data_q.addr):
+                          (lsu_data_q.addr[CVA6Cfg.XLEN-1:0]);
         lsu_ex_gpaddr   = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
                           (lsu_data_q.addr[CVA6Cfg.GPLEN-1:0]):
                           {lsu_data_q.addr};

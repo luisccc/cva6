@@ -588,6 +588,9 @@ module csr_regfile
           riscv::CSR_HENVCFG:
           if (CVA6Cfg.RVH) csr_rdata = '0 | {{CVA6Cfg.XLEN - 1{1'b0}}, fiom_q};
           else read_access_exception = 1'b1;
+          riscv::CSR_HENVCFGH:
+          if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) csr_rdata = '0;
+          else read_access_exception = 1'b1;
           riscv::CSR_HGATP: begin
             if (CVA6Cfg.RVH) begin
               // intercept reads to HGATP if in HS-Mode and TVM is enabled
@@ -627,7 +630,8 @@ module csr_regfile
           // machine mode registers
           riscv::CSR_MSTATUS: csr_rdata = mstatus_extended;
           riscv::CSR_MSTATUSH:
-          if (CVA6Cfg.XLEN == 32) csr_rdata = '0;
+          if (CVA6Cfg.XLEN == 32) csr_rdata = {24'b0, mstatus_q.mpv, mstatus_q.gva, 
+                                                mstatus_q.mbe, mstatus_q.sbe, 4'b0};
           else read_access_exception = 1'b1;
           riscv::CSR_MISA: csr_rdata = IsaCode;
           riscv::CSR_MEDELEG:
@@ -909,7 +913,7 @@ module csr_regfile
             if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) read_access_exception = 1'b1;
             else begin
               // Check if entry is not delegated to S-mode
-              if (!CVA6Cfg.SpmpPresent || index[5:0] < CVA6Cfg.NrPMPEntries) begin
+              if (!CVA6Cfg.SpmpPresent || (index[5:0] < (CVA6Cfg.NrPMPEntries/4))) begin
                 csr_rdata = pmpcfg_q[index*4+:CVA6Cfg.XLEN/8];
               end
               else begin
@@ -1991,6 +1995,8 @@ module csr_regfile
           riscv::CSR_HENVCFG:
           if (CVA6Cfg.RVH) fiom_d = csr_wdata[0];
           else update_access_exception = 1'b1;
+          riscv::CSR_HENVCFGH:
+          if (!CVA6Cfg.RVH || (CVA6Cfg.XLEN != 32)) update_access_exception = 1'b1;
           riscv::CSR_MSTATUS: begin
             mstatus_d    = {{64 - CVA6Cfg.XLEN{1'b0}}, csr_wdata};
             mstatus_d.xs = riscv::Off;
@@ -2026,7 +2032,12 @@ module csr_regfile
             // this register has side-effects on other registers, flush the pipeline
             flush_o         = 1'b1;
           end
-          riscv::CSR_MSTATUSH: if (CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
+          riscv::CSR_MSTATUSH: 
+          if (CVA6Cfg.XLEN == 32) begin
+            mstatus_d[62:32]  = csr_wdata[30:0];
+            flush_o           = 1'b1;
+          end
+          else update_access_exception = 1'b1;
           // MISA is WARL (Write Any Value, Reads Legal Value)
           riscv::CSR_MISA: ;
           // machine exception delegation register
