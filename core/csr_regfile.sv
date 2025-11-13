@@ -1654,10 +1654,11 @@ module csr_regfile
           if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 0; i < CVA6Cfg.XLEN; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrVSPMPEntries) begin
                   // Locked vSPMP entries can only be modified by M-mode and HS-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)
                   ) begin
                     vspmpswitch_d[i] = csr_wdata[i];
@@ -1674,10 +1675,11 @@ module csr_regfile
           if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrVSPMPEntries) begin
                   // Locked vSPMP entries can only be modified by M-mode and HS-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)
                   ) begin
                     vspmpswitchh_d[i-32] = csr_wdata[i-32];
@@ -1796,16 +1798,14 @@ module csr_regfile
           if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 0; i < CVA6Cfg.XLEN; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrSPMPEntries) begin
                   // Locked SPMP entries can only be modified by M-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
                     sspmpswitch_d[i] = csr_wdata[i];
-                  end
-                  else begin
-                    sspmpswitch_d[i] = sspmpswitch_q[i];
                   end
                 end
               end
@@ -1819,10 +1819,11 @@ module csr_regfile
           if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrSPMPEntries) begin
                   // Locked SPMP entries can only be modified by M-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
                     sspmpswitchh_d[i-32] = csr_wdata[i-32];
@@ -1955,16 +1956,14 @@ module csr_regfile
           if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 0; i < CVA6Cfg.XLEN; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrSPMPEntries) begin
                   // Locked SPMP entries can only be modified by M-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
                     hspmpswitch_d[i] = csr_wdata[i];
-                  end
-                  else begin
-                    hspmpswitch_d[i] = hspmpswitch_q[i];
                   end
                 end
               end
@@ -1978,10 +1977,11 @@ module csr_regfile
           if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32) && CVA6Cfg.SpmpPresent) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
+                automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
                 // Check limits
                 if (i < CVA6Cfg.NrSPMPEntries) begin
                   // Locked SPMP entries can only be modified by M-mode
-                  if ((!pmpcfg_q[i].locked && !(pmpcfg_q[i+1].locked && pmpcfg_q[i+1].addr_mode == riscv::TOR)) || 
+                  if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
                     hspmpswitchh_d[i-32] = csr_wdata[i-32];
