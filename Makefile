@@ -169,7 +169,9 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         $(wildcard corev_apu/fpga/src/axi_slice/src/*.sv)                            \
         $(wildcard corev_apu/src/axi_riscv_atomics/src/*.sv)                         \
         $(wildcard corev_apu/axi_mem_if/src/*.sv)                                    \
-				$(wildcard corev_apu/riscv-dbg/src/*.sv)                                   \
+		$(wildcard corev_apu/riscv-dbg/src/*.sv)                                     \
+		$(wildcard corev_apu/aia/rtl/*.sv)                                           \
+        $(wildcard corev_apu/aia/rtl/util/*.sv)                                      \
         corev_apu/rv_plic/rtl/rv_plic_target.sv                                      \
         corev_apu/rv_plic/rtl/rv_plic_gateway.sv                                     \
         corev_apu/rv_plic/rtl/plic_regmap.sv                                         \
@@ -185,6 +187,7 @@ src :=  $(if $(spike-tandem),verif/tb/core/uvma_core_cntrl_pkg.sv)              
         vendor/pulp-platform/axi/src/axi_join.sv                                     \
         vendor/pulp-platform/axi/src/axi_delayer.sv                                  \
         vendor/pulp-platform/axi/src/axi_to_axi_lite.sv                              \
+		vendor/pulp-platform/axi/src/axi_lite_to_axi.sv                              \
         vendor/pulp-platform/axi/src/axi_id_prepend.sv                               \
         vendor/pulp-platform/axi/src/axi_atop_filter.sv                              \
         vendor/pulp-platform/axi/src/axi_err_slv.sv                                  \

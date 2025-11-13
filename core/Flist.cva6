@@ -59,6 +59,11 @@ ${CVA6_REPO_DIR}/core/cvfpu/src/fpu_div_sqrt_mvp/hdl/norm_div_sqrt_mvp.sv
 ${CVA6_REPO_DIR}/core/cvfpu/src/fpu_div_sqrt_mvp/hdl/nrbd_nrsc_mvp.sv
 ${CVA6_REPO_DIR}/core/cvfpu/src/fpu_div_sqrt_mvp/hdl/preprocess_mvp.sv
 
+${CVA6_REPO_DIR}/corev_apu/aia/rtl/package/aplic_domain_pkg.sv
+${CVA6_REPO_DIR}/corev_apu/aia/rtl/package/aia_pkg.sv
+${CVA6_REPO_DIR}/corev_apu/aia/rtl/package/imsic_protocol_pkg.sv
+${CVA6_REPO_DIR}/corev_apu/aia/rtl/package/aplic_pkg.sv
+${CVA6_REPO_DIR}/corev_apu/aia/rtl/package/imsic_pkg.sv
 ${CVA6_REPO_DIR}/core/include/config_pkg.sv
 ${CVA6_REPO_DIR}/core/include/${TARGET_CFG}_config_pkg.sv
 ${CVA6_REPO_DIR}/core/include/riscv_pkg.sv

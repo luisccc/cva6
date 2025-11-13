@@ -51,9 +51,11 @@ module ariane import ariane_pkg::*; #(
   // Core ID, Cluster ID and boot address are considered more or less static
   input  logic [CVA6Cfg.VLEN-1:0]       boot_addr_i,  // reset boot address
   input  logic [CVA6Cfg.XLEN-1:0]       hart_id_i,    // hart id in a multicore environment (reflected in a CSR)
-
+  // Hart-IMSIC CSR channel
+  output imsic_pkg::csr_channel_to_imsic_t    imsic_csr_o, 
+  input  imsic_pkg::csr_channel_from_imsic_t  imsic_csr_i,
   // Interrupt inputs
-  input  logic [1:0]                   irq_i,        // level sensitive IR lines, mip & sip (async)
+  input  logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,      // IRQ lines (async)
   input  logic                         ipi_i,        // inter-processor interrupts (async)
   // Timer facilities
   input  logic                         time_irq_i,   // timer interrupt in (async)
@@ -97,6 +99,8 @@ module ariane import ariane_pkg::*; #(
     .rst_ni               ( rst_ni                    ),
     .boot_addr_i          ( boot_addr_i               ),
     .hart_id_i            ( hart_id_i                 ),
+    .imsic_csr_i          ( imsic_csr_i               ),
+    .imsic_csr_o          ( imsic_csr_o               ),
     .irq_i                ( irq_i                     ),
     .ipi_i                ( ipi_i                     ),
     .time_irq_i           ( time_irq_i                ),

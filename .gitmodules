@@ -55,3 +55,6 @@
 [submodule "corev_apu/fpga/src/gpio"]
 	path = corev_apu/fpga/src/gpio
 	url = https://github.com/pulp-platform/gpio.git
+[submodule "corev_apu/aia"]
+	path = corev_apu/aia
+	url = git@github.com:zero-day-labs/riscv-aia.git

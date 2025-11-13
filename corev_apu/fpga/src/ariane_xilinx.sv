@@ -301,7 +301,10 @@ dm::dmi_resp_t debug_resp;
 logic dmactive;
 
 // IRQ
-logic [1:0] irq;
+logic [CVA6Cfg.NrIntpFiles-1:0] irq;
+// IMSIC CSR Channels
+imsic_pkg::csr_channel_to_imsic_t   aia_csr_hart2imsic; 
+imsic_pkg::csr_channel_from_imsic_t aia_csr_imsic2hart;
 assign test_en    = 1'b0;
 
 logic [NBSlave-1:0] pc_asserted;
@@ -327,10 +330,11 @@ assign addr_map = '{
   '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
   '{ idx: ariane_soc::ROM,      start_addr: ariane_soc::ROMBase,      end_addr: ariane_soc::ROMBase + ariane_soc::ROMLength           },
   '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
-  '{ idx: ariane_soc::PLIC,     start_addr: ariane_soc::PLICBase,     end_addr: ariane_soc::PLICBase + ariane_soc::PLICLength         },
+  '{ idx: ariane_soc::APLIC,    start_addr: ariane_soc::APLICBase,    end_addr: ariane_soc::APLICBase + ariane_soc::APLICLength       },
   '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
   '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
   '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
+  '{ idx: ariane_soc::IMSIC,    start_addr: ariane_soc::IMSICBase,    end_addr: ariane_soc::IMSICBase + ariane_soc::IMSICLength       },
   '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
   '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
   '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
@@ -764,6 +768,8 @@ ariane #(
     .rst_ni       ( ndmreset_n          ),
     .boot_addr_i  ( ariane_soc::ROMBase ), // start fetching from ROM
     .hart_id_i    ( '0                  ),
+    .imsic_csr_i  ( aia_csr_imsic2hart  ),
+    .imsic_csr_o  ( aia_csr_hart2imsic  ),
     .irq_i        ( irq                 ),
     .ipi_i        ( ipi                 ),
     .time_irq_i   ( timer_irq           ),
@@ -860,6 +866,7 @@ end
 logic clk_200MHz_ref;
 
 ariane_peripherals #(
+    .CVA6Cfg      ( CVA6Cfg          ),
     .AxiAddrWidth ( AxiAddrWidth     ),
     .AxiDataWidth ( AxiDataWidth     ),
     .AxiIdWidth   ( AxiIdWidthSlaves ),
@@ -886,16 +893,19 @@ ariane_peripherals #(
     .clk_i        ( clk                          ),
     .clk_200MHz_i ( clk_200MHz_ref               ),
     .rst_ni       ( ndmreset_n                   ),
-    .plic         ( master[ariane_soc::PLIC]     ),
+    .aplic        ( master[ariane_soc::APLIC]    ),
     .uart         ( master[ariane_soc::UART]     ),
     .spi          ( master[ariane_soc::SPI]      ),
     .gpio         ( master[ariane_soc::GPIO]     ),
-    .eth_clk_i    ( eth_clk                      ),
     .ethernet     ( master[ariane_soc::Ethernet] ),
     .timer        ( master[ariane_soc::Timer]    ),
+    .imsic        ( master[ariane_soc::IMSIC]    ),
+    .imsic_csr_i  ( aia_csr_hart2imsic           ),
+    .imsic_csr_o  ( aia_csr_imsic2hart           ),
     .irq_o        ( irq                          ),
     .rx_i         ( rx                           ),
     .tx_o         ( tx                           ),
+    .eth_clk_i    ( eth_clk                      ),
     .eth_txck,
     .eth_rxck,
     .eth_rxctl,

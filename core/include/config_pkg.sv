@@ -334,6 +334,11 @@ package config_pkg;
     bit                          NonIdemPotenceEn;       // Currently only used by V extension (Ara)
     bit                          AxiBurstWriteEn;
 
+    // AIA Parameters
+    int unsigned NrVSIntpFiles;
+    int unsigned NrVSIntpFilesW;
+    int unsigned NrIntpFiles;
+
     int unsigned ICACHE_SET_ASSOC;
     int unsigned ICACHE_SET_ASSOC_WIDTH;
     int unsigned ICACHE_INDEX_WIDTH;

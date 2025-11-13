@@ -135,6 +135,11 @@ package build_config_pkg;
     cfg.NonIdemPotenceEn = (CVA6Cfg.NrNonIdempotentRules > 0) && (CVA6Cfg.NonIdempotentLength > 0);
     cfg.AxiBurstWriteEn = CVA6Cfg.AxiBurstWriteEn;
 
+    // AIA Parameters
+    cfg.NrVSIntpFiles = aia_pkg::UserNrVSIntpFiles;
+    cfg.NrVSIntpFilesW = $clog2(aia_pkg::UserNrVSIntpFiles);
+    cfg.NrIntpFiles = 2 + aia_pkg::UserNrVSIntpFiles;
+
     cfg.ICACHE_SET_ASSOC = CVA6Cfg.IcacheSetAssoc;
     cfg.ICACHE_SET_ASSOC_WIDTH = CVA6Cfg.IcacheSetAssoc > 1 ? $clog2(CVA6Cfg.IcacheSetAssoc) :
         CVA6Cfg.IcacheSetAssoc;

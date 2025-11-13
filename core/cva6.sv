@@ -304,8 +304,12 @@ module cva6
     input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
     input logic [CVA6Cfg.XLEN-1:0] hart_id_i,
+    // Hart-IMSIC CSR channel - SUBSYSTEM
+    output imsic_pkg::csr_channel_to_imsic_t imsic_csr_o, 
+    // IMSIC-Hart CSR channel - SUBSYSTEM
+    input imsic_pkg::csr_channel_from_imsic_t imsic_csr_i,
     // Level sensitive (async) interrupts - SUBSYSTEM
-    input logic [1:0] irq_i,
+    input  logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,
     // Inter-processor (async) interrupt - SUBSYSTEM
     input logic ipi_i,
     // Timer (async) interrupt - SUBSYSTEM
@@ -564,6 +568,9 @@ module cva6
   logic acc_cons_en_csr;
   logic debug_mode;
   logic single_step_csr_commit;
+  logic [CVA6Cfg.XLEN-1:0] mtopi;
+  logic [CVA6Cfg.XLEN-1:0] stopi;
+  logic [CVA6Cfg.XLEN-1:0] vstopi;
   riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg;
   logic [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr;
   logic [31:0] mcountinhibit_csr_perf;
@@ -725,7 +732,10 @@ module cva6
       .compressed_ready_i(x_compressed_ready),
       .compressed_resp_i (x_compressed_resp),
       .compressed_valid_o(x_compressed_valid),
-      .compressed_req_o  (x_compressed_req)
+      .compressed_req_o  (x_compressed_req),
+      .mtopi_o           (mtopi),
+      .stopi_o           (stopi),
+      .vstopi_o          (vstopi)
   );
 
   logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_ex_id;
@@ -1137,6 +1147,11 @@ module cva6
       .fprec_o                 (fprec_csr_ex),
       .vs_o                    (vs),
       .irq_ctrl_o              (irq_ctrl_csr_id),
+      .mtopi_i                 (mtopi),
+      .stopi_i                 (stopi),
+      .vstopi_i                (vstopi),
+      .imsic_csr_i             (imsic_csr_i),
+      .imsic_csr_o             (imsic_csr_o),
       .en_translation_o        (enable_translation_csr_ex),
       .en_g_translation_o      (enable_g_translation_csr_ex),
       .en_ld_st_translation_o  (en_ld_st_translation_csr_ex),

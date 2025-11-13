@@ -17,7 +17,7 @@ package ariane_soc;
   // M-Mode Hart, S-Mode Hart
   localparam int unsigned NumTargets = 2;
   // Uart, SPI, Ethernet, reserved
-  localparam int unsigned NumSources = 30;
+  localparam int unsigned NumSources = 32;
   localparam int unsigned MaxPriority = 7;
 
   localparam NrSlaves = 2; // actually masters, but slaves on the crossbar
@@ -26,25 +26,37 @@ package ariane_soc;
     DRAM     = 0,
     GPIO     = 1,
     Ethernet = 2,
-    SPI      = 3,
-    Timer    = 4,
-    UART     = 5,
-    PLIC     = 6,
-    CLINT    = 7,
-    ROM      = 8,
-    Debug    = 9
+    IMSIC    = 3,
+    SPI      = 4,
+    Timer    = 5,
+    UART     = 6,
+    APLIC    = 7,
+    CLINT    = 8,
+    ROM      = 9,
+    Debug    = 10
   } axi_slaves_t;
 
   localparam NB_PERIPHERALS = Debug + 1;
 
+  typedef enum int unsigned {
+    UART_IRQ        = 0,
+    SPI_IRQ         = 1,
+    ETH_IRQ         = 2,
+    TIMER_FIRST_IRQ = 3,
+    TIMER_LAST_IRQ  = 6
+  } irq_id_t;
+
+  // Modify accordingly when adding IRQ IDs
+  localparam LAST_IRQ = TIMER_LAST_IRQ + 1;
 
   localparam logic[63:0] DebugLength    = 64'h1000;
   localparam logic[63:0] ROMLength      = 64'h10000;
   localparam logic[63:0] CLINTLength    = 64'hC0000;
-  localparam logic[63:0] PLICLength     = 64'h3FF_FFFF;
+  localparam logic[63:0] APLICLength    = 64'h3FF_FFFF;
   localparam logic[63:0] UARTLength     = 64'h1000;
   localparam logic[63:0] TimerLength    = 64'h1000;
   localparam logic[63:0] SPILength      = 64'h800000;
+  localparam logic[63:0] IMSICLength    = 64'h800_0000;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h1000;
 `ifdef NEXYS_VIDEO
@@ -60,10 +72,11 @@ package ariane_soc;
     DebugBase    = 64'h0000_0000,
     ROMBase      = 64'h0001_0000,
     CLINTBase    = 64'h0200_0000,
-    PLICBase     = 64'h0C00_0000,
+    APLICBase    = 64'h0C00_0000,
     UARTBase     = 64'h1000_0000,
     TimerBase    = 64'h1800_0000,
     SPIBase      = 64'h2000_0000,
+    IMSICBase    = 64'h2400_0000,
     EthernetBase = 64'h3000_0000,
     GPIOBase     = 64'h4000_0000,
     DRAMBase     = 64'h8000_0000

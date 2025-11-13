@@ -53,7 +53,7 @@ module decoder
     // If an exception occured in fetch stage - FRONTEND
     input exception_t ex_i,
     // Level sensitive (async) interrupts - SUBSYSTEM
-    input logic [1:0] irq_i,
+    input logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,
     // Interrupt control status - CSR_REGFILE
     input irq_ctrl_t irq_ctrl_i,
     // Current privilege level - CSR_REGFILE
@@ -85,7 +85,11 @@ module decoder
     // Instruction - ISSUE_STAGE
     output logic [31:0] orig_instr_o,
     // Is a control flow instruction - ISSUE_STAGE
-    output logic is_control_flow_instr_o
+    output logic is_control_flow_instr_o,
+    // AIA top level interrupt CSRs
+    output logic [CVA6Cfg.XLEN-1:0] mtopi_o,
+    output logic [CVA6Cfg.XLEN-1:0] stopi_o,
+    output logic [CVA6Cfg.XLEN-1:0] vstopi_o
 );
   logic illegal_instr;
   logic illegal_instr_bm;
@@ -1543,6 +1547,9 @@ module decoder
   // Exception handling
   // ---------------------
   logic [CVA6Cfg.XLEN-1:0] interrupt_cause;
+  logic [CVA6Cfg.XLEN-1:0] m_interrupt_topi;
+  logic [CVA6Cfg.XLEN-1:0] s_interrupt_topi;
+  logic [CVA6Cfg.XLEN-1:0] vs_interrupt_topi;
 
   // this instruction has already executed if the exception is valid
   assign instruction_o.valid = instruction_o.ex.valid;
@@ -1550,6 +1557,12 @@ module decoder
   always_comb begin : exception_handling
     interrupt_cause = '0;
     instruction_o.ex = ex_i;
+    m_interrupt_topi = '0;
+    s_interrupt_topi = '0;
+    vs_interrupt_topi = '0;
+    mtopi_o = '0;
+    stopi_o = '0;
+    vstopi_o = '0;
     orig_instr_o = '0;
     // look if we didn't already get an exception in any previous
     // stage - we should not overwrite it as we retain order regarding the exception
@@ -1607,47 +1620,82 @@ module decoder
       if (CVA6Cfg.RVH) begin
         if (irq_ctrl_i.mie[riscv::IRQ_VS_TIMER] && irq_ctrl_i.mip[riscv::IRQ_VS_TIMER]) begin
           interrupt_cause = INTERRUPTS.VS_TIMER;
+          vs_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_TIMER);
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_TIMER);
         end
         // Virtual Supervisor Software Interrupt
         if (irq_ctrl_i.mie[riscv::IRQ_VS_SOFT] && irq_ctrl_i.mip[riscv::IRQ_VS_SOFT]) begin
           interrupt_cause = INTERRUPTS.VS_SW;
+          vs_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_SOFT);
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_SOFT);
         end
         // Virtual Supervisor External Interrupt
         if (irq_ctrl_i.mie[riscv::IRQ_VS_EXT] && (irq_ctrl_i.mip[riscv::IRQ_VS_EXT])) begin
           interrupt_cause = INTERRUPTS.VS_EXT;
+          vs_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_EXT);
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_EXT);
         end
-        // Hypervisor Guest External Interrupts
+        // Hypervisor Guest External Interrupt
         if (irq_ctrl_i.mie[riscv::IRQ_HS_EXT] && irq_ctrl_i.mip[riscv::IRQ_HS_EXT]) begin
           interrupt_cause = INTERRUPTS.HS_EXT;
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_HS_EXT);
         end
       end
       if (CVA6Cfg.RVS) begin
         // Supervisor Timer Interrupt
         if (irq_ctrl_i.mie[riscv::IRQ_S_TIMER] && irq_ctrl_i.mip[riscv::IRQ_S_TIMER]) begin
           interrupt_cause = INTERRUPTS.S_TIMER;
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_TIMER);
+          m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_TIMER);
         end
         // Supervisor Software Interrupt
         if (irq_ctrl_i.mie[riscv::IRQ_S_SOFT] && irq_ctrl_i.mip[riscv::IRQ_S_SOFT]) begin
           interrupt_cause = INTERRUPTS.S_SW;
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_SOFT);
+          m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_SOFT);
         end
         // Supervisor External Interrupt
         // The logical-OR of the software-writable bit and the signal from the external interrupt controller is
         // used to generate external interrupts to the supervisor
         if (irq_ctrl_i.mie[riscv::IRQ_S_EXT] && (irq_ctrl_i.mip[riscv::IRQ_S_EXT] | irq_i[ariane_pkg::SupervisorIrq])) begin
           interrupt_cause = INTERRUPTS.S_EXT;
+          s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_EXT);
+          m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_S_EXT);
         end
       end
       // Machine Timer Interrupt
       if (irq_ctrl_i.mip[riscv::IRQ_M_TIMER] && irq_ctrl_i.mie[riscv::IRQ_M_TIMER]) begin
         interrupt_cause = INTERRUPTS.M_TIMER;
+        m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_M_TIMER);
       end
       // Machine Mode Software Interrupt
       if (irq_ctrl_i.mip[riscv::IRQ_M_SOFT] && irq_ctrl_i.mie[riscv::IRQ_M_SOFT]) begin
         interrupt_cause = INTERRUPTS.M_SW;
+        m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_M_SOFT);
       end
       // Machine Mode External Interrupt
       if (irq_ctrl_i.mip[riscv::IRQ_M_EXT] && irq_ctrl_i.mie[riscv::IRQ_M_EXT]) begin
         interrupt_cause = INTERRUPTS.M_EXT;
+        m_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_M_EXT);
+      end
+
+      /** AIA: TOPI logic; It is not affected by the global enable */
+      if(CVA6Cfg.RVH) begin
+          if (irq_ctrl_i.mideleg[vs_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]] &&
+              irq_ctrl_i.hideleg[vs_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]]) begin
+              vstopi_o = vs_interrupt_topi;
+          end
+          if (irq_ctrl_i.mideleg[s_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]]  &&
+              !irq_ctrl_i.hideleg[s_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]]) begin
+              stopi_o = s_interrupt_topi;
+          end
+      end else begin
+          if (irq_ctrl_i.mideleg[s_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]]) begin
+              stopi_o = s_interrupt_topi;
+          end
+      end
+      if (!irq_ctrl_i.mideleg[m_interrupt_topi[$clog2(CVA6Cfg.XLEN)-1:0]]) begin
+          mtopi_o = m_interrupt_topi;
       end
 
       if (interrupt_cause[CVA6Cfg.XLEN-1] && irq_ctrl_i.global_enable) begin
