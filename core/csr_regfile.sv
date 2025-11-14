@@ -238,8 +238,6 @@ module csr_regfile
   // we are in debug
   logic debug_mode_q, debug_mode_d;
   logic mtvec_rst_load_q;  // used to determine whether we came out of reset
-  logic is_csrind_only;
-  logic is_csrind_access; // CSR indirect access
 
   logic [CVA6Cfg.XLEN-1:0] dpc_q, dpc_d;
   logic [CVA6Cfg.XLEN-1:0] dscratch0_q, dscratch0_d;
@@ -331,10 +329,18 @@ module csr_regfile
 
   assign csr_addr = riscv::csr_t'(csr_addr_i);
   assign vs_csr_addr = (CVA6Cfg.RVH) ? riscv::convert_vs_access_csr(csr_addr, v_q) : csr_addr;
-  assign ind_csr_addr = (CVA6Cfg.RVCSRIND) ? riscv::convert_csrind_access(vs_csr_addr, miselect_q, siselect_q, vsiselect_q) : riscv::csr_ind_t'(vs_csr_addr);  
-  assign is_csrind_only = ind_csr_addr.csrind_only;
-  assign conv_csr_addr = ind_csr_addr.csr;
-  assign raw_indcsr_addr = (CVA6Cfg.RVCSRIND) ? riscv::csr_ind_reg_t'(ind_csr_addr) : riscv::csr_ind_reg_t'('0);
+
+  if (CVA6Cfg.RVCSRIND) begin
+    assign ind_csr_addr = riscv::convert_csrind_access(vs_csr_addr, 
+                                  miselect_q, siselect_q, vsiselect_q);
+    assign raw_indcsr_addr = riscv::csr_ind_reg_t'(ind_csr_addr.csr_addr);
+  end
+  else begin
+    assign ind_csr_addr = riscv::csr_ind_t'(vs_csr_addr);
+    assign raw_indcsr_addr = riscv::csr_ind_reg_t'('0);
+  end
+
+  assign conv_csr_addr = ind_csr_addr.csr_addr.csr;
 
   assign fs_o = mstatus_q.fs;
   assign vfs_o = (CVA6Cfg.RVH) ? vsstatus_q.fs : riscv::Off;
@@ -362,7 +368,7 @@ module csr_regfile
     perf_addr_o = conv_csr_addr.address[11:0];
 
     if (csr_read) begin
-      if (!is_csrind_only) begin   // The CSR belongs to the normal CSR space and may be accessed either via direct or indirect access
+      if (!ind_csr_addr.csr_addr.csrind_only) begin   // The CSR belongs to the normal CSR space and may be accessed either via direct or indirect access
         unique case (conv_csr_addr.address)
           riscv::CSR_FFLAGS: begin
             if (CVA6Cfg.FpPresent && !(mstatus_q.fs == riscv::Off || (CVA6Cfg.RVH && v_q && vsstatus_q.fs == riscv::Off))) begin
@@ -1017,73 +1023,10 @@ module csr_regfile
         if (CVA6Cfg.RVCSRIND) begin
           unique case (raw_indcsr_addr)
             // spmpcfg
-            riscv::CSR_SPMPCFG0,
-            riscv::CSR_SPMPCFG1,
-            riscv::CSR_SPMPCFG2,
-            riscv::CSR_SPMPCFG3,
-            riscv::CSR_SPMPCFG4,
-            riscv::CSR_SPMPCFG5,
-            riscv::CSR_SPMPCFG6,
-            riscv::CSR_SPMPCFG7,
-            riscv::CSR_SPMPCFG8,
-            riscv::CSR_SPMPCFG9,
-            riscv::CSR_SPMPCFG10,
-            riscv::CSR_SPMPCFG11,
-            riscv::CSR_SPMPCFG12,
-            riscv::CSR_SPMPCFG13,
-            riscv::CSR_SPMPCFG14,
-            riscv::CSR_SPMPCFG15,
-            riscv::CSR_SPMPCFG16,
-            riscv::CSR_SPMPCFG17,
-            riscv::CSR_SPMPCFG18,
-            riscv::CSR_SPMPCFG19,
-            riscv::CSR_SPMPCFG20,
-            riscv::CSR_SPMPCFG21,
-            riscv::CSR_SPMPCFG22,
-            riscv::CSR_SPMPCFG23,
-            riscv::CSR_SPMPCFG24,
-            riscv::CSR_SPMPCFG25,
-            riscv::CSR_SPMPCFG26,
-            riscv::CSR_SPMPCFG27,
-            riscv::CSR_SPMPCFG28,
-            riscv::CSR_SPMPCFG29,
-            riscv::CSR_SPMPCFG30,
-            riscv::CSR_SPMPCFG31,
-            riscv::CSR_SPMPCFG32,
-            riscv::CSR_SPMPCFG33,
-            riscv::CSR_SPMPCFG34,
-            riscv::CSR_SPMPCFG35,
-            riscv::CSR_SPMPCFG36,
-            riscv::CSR_SPMPCFG37,
-            riscv::CSR_SPMPCFG38,
-            riscv::CSR_SPMPCFG39,
-            riscv::CSR_SPMPCFG40,
-            riscv::CSR_SPMPCFG41,
-            riscv::CSR_SPMPCFG42,
-            riscv::CSR_SPMPCFG43,
-            riscv::CSR_SPMPCFG44,
-            riscv::CSR_SPMPCFG45,
-            riscv::CSR_SPMPCFG46,
-            riscv::CSR_SPMPCFG47,
-            riscv::CSR_SPMPCFG48,
-            riscv::CSR_SPMPCFG49,
-            riscv::CSR_SPMPCFG50,
-            riscv::CSR_SPMPCFG51,
-            riscv::CSR_SPMPCFG52,
-            riscv::CSR_SPMPCFG53,
-            riscv::CSR_SPMPCFG54,
-            riscv::CSR_SPMPCFG55,
-            riscv::CSR_SPMPCFG56,
-            riscv::CSR_SPMPCFG57,
-            riscv::CSR_SPMPCFG58,
-            riscv::CSR_SPMPCFG59,
-            riscv::CSR_SPMPCFG60,
-            riscv::CSR_SPMPCFG61,
-            riscv::CSR_SPMPCFG62,
-            riscv::CSR_SPMPCFG63: begin
+            riscv::CSR_SPMPCFG: begin
               if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
-                automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_SPMPCFG0) + CVA6Cfg.NrPMPEntries;
-                automatic int spmp_idx = raw_indcsr_addr - riscv::CSR_SPMPCFG0;
+                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
+                automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
                   csr_rdata = CVA6Cfg.XLEN'({spmpcfg_q[spmp_idx], pmpcfg_q[pmp_idx]});
                 end
@@ -1094,73 +1037,10 @@ module csr_regfile
               else read_access_exception = 1'b1;
             end
             // spmpaddr
-            riscv::CSR_SPMPADDR0,
-            riscv::CSR_SPMPADDR1,
-            riscv::CSR_SPMPADDR2,
-            riscv::CSR_SPMPADDR3,
-            riscv::CSR_SPMPADDR4,
-            riscv::CSR_SPMPADDR5,
-            riscv::CSR_SPMPADDR6,
-            riscv::CSR_SPMPADDR7,
-            riscv::CSR_SPMPADDR8,
-            riscv::CSR_SPMPADDR9,
-            riscv::CSR_SPMPADDR10,
-            riscv::CSR_SPMPADDR11,
-            riscv::CSR_SPMPADDR12,
-            riscv::CSR_SPMPADDR13,
-            riscv::CSR_SPMPADDR14,
-            riscv::CSR_SPMPADDR15,
-            riscv::CSR_SPMPADDR16,
-            riscv::CSR_SPMPADDR17,
-            riscv::CSR_SPMPADDR18,
-            riscv::CSR_SPMPADDR19,
-            riscv::CSR_SPMPADDR20,
-            riscv::CSR_SPMPADDR21,
-            riscv::CSR_SPMPADDR22,
-            riscv::CSR_SPMPADDR23,
-            riscv::CSR_SPMPADDR24,
-            riscv::CSR_SPMPADDR25,
-            riscv::CSR_SPMPADDR26,
-            riscv::CSR_SPMPADDR27,
-            riscv::CSR_SPMPADDR28,
-            riscv::CSR_SPMPADDR29,
-            riscv::CSR_SPMPADDR30,
-            riscv::CSR_SPMPADDR31,
-            riscv::CSR_SPMPADDR32,
-            riscv::CSR_SPMPADDR33,
-            riscv::CSR_SPMPADDR34,
-            riscv::CSR_SPMPADDR35,
-            riscv::CSR_SPMPADDR36,
-            riscv::CSR_SPMPADDR37,
-            riscv::CSR_SPMPADDR38,
-            riscv::CSR_SPMPADDR39,
-            riscv::CSR_SPMPADDR40,
-            riscv::CSR_SPMPADDR41,
-            riscv::CSR_SPMPADDR42,
-            riscv::CSR_SPMPADDR43,
-            riscv::CSR_SPMPADDR44,
-            riscv::CSR_SPMPADDR45,
-            riscv::CSR_SPMPADDR46,
-            riscv::CSR_SPMPADDR47,
-            riscv::CSR_SPMPADDR48,
-            riscv::CSR_SPMPADDR49,
-            riscv::CSR_SPMPADDR50,
-            riscv::CSR_SPMPADDR51,
-            riscv::CSR_SPMPADDR52,
-            riscv::CSR_SPMPADDR53,
-            riscv::CSR_SPMPADDR54,
-            riscv::CSR_SPMPADDR55,
-            riscv::CSR_SPMPADDR56,
-            riscv::CSR_SPMPADDR57,
-            riscv::CSR_SPMPADDR58,
-            riscv::CSR_SPMPADDR59,
-            riscv::CSR_SPMPADDR60,
-            riscv::CSR_SPMPADDR61,
-            riscv::CSR_SPMPADDR62,
-            riscv::CSR_SPMPADDR63: begin
+            riscv::CSR_SPMPADDR: begin
               if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
-                automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_SPMPADDR0) + CVA6Cfg.NrPMPEntries;
-                automatic int spmp_idx = raw_indcsr_addr - riscv::CSR_SPMPADDR0;
+                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
+                automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
                   // We only support granularity 8 bytes (G=1)
                   // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
@@ -1181,74 +1061,11 @@ module csr_regfile
               else read_access_exception = 1'b1;
             end
             // vspmpcfg
-            riscv::CSR_VSPMPCFG0,
-            riscv::CSR_VSPMPCFG1,
-            riscv::CSR_VSPMPCFG2,
-            riscv::CSR_VSPMPCFG3,
-            riscv::CSR_VSPMPCFG4,
-            riscv::CSR_VSPMPCFG5,
-            riscv::CSR_VSPMPCFG6,
-            riscv::CSR_VSPMPCFG7,
-            riscv::CSR_VSPMPCFG8,
-            riscv::CSR_VSPMPCFG9,
-            riscv::CSR_VSPMPCFG10,
-            riscv::CSR_VSPMPCFG11,
-            riscv::CSR_VSPMPCFG12,
-            riscv::CSR_VSPMPCFG13,
-            riscv::CSR_VSPMPCFG14,
-            riscv::CSR_VSPMPCFG15,
-            riscv::CSR_VSPMPCFG16,
-            riscv::CSR_VSPMPCFG17,
-            riscv::CSR_VSPMPCFG18,
-            riscv::CSR_VSPMPCFG19,
-            riscv::CSR_VSPMPCFG20,
-            riscv::CSR_VSPMPCFG21,
-            riscv::CSR_VSPMPCFG22,
-            riscv::CSR_VSPMPCFG23,
-            riscv::CSR_VSPMPCFG24,
-            riscv::CSR_VSPMPCFG25,
-            riscv::CSR_VSPMPCFG26,
-            riscv::CSR_VSPMPCFG27,
-            riscv::CSR_VSPMPCFG28,
-            riscv::CSR_VSPMPCFG29,
-            riscv::CSR_VSPMPCFG30,
-            riscv::CSR_VSPMPCFG31,
-            riscv::CSR_VSPMPCFG32,
-            riscv::CSR_VSPMPCFG33,
-            riscv::CSR_VSPMPCFG34,
-            riscv::CSR_VSPMPCFG35,
-            riscv::CSR_VSPMPCFG36,
-            riscv::CSR_VSPMPCFG37,
-            riscv::CSR_VSPMPCFG38,
-            riscv::CSR_VSPMPCFG39,
-            riscv::CSR_VSPMPCFG40,
-            riscv::CSR_VSPMPCFG41,
-            riscv::CSR_VSPMPCFG42,
-            riscv::CSR_VSPMPCFG43,
-            riscv::CSR_VSPMPCFG44,
-            riscv::CSR_VSPMPCFG45,
-            riscv::CSR_VSPMPCFG46,
-            riscv::CSR_VSPMPCFG47,
-            riscv::CSR_VSPMPCFG48,
-            riscv::CSR_VSPMPCFG49,
-            riscv::CSR_VSPMPCFG50,
-            riscv::CSR_VSPMPCFG51,
-            riscv::CSR_VSPMPCFG52,
-            riscv::CSR_VSPMPCFG53,
-            riscv::CSR_VSPMPCFG54,
-            riscv::CSR_VSPMPCFG55,
-            riscv::CSR_VSPMPCFG56,
-            riscv::CSR_VSPMPCFG57,
-            riscv::CSR_VSPMPCFG58,
-            riscv::CSR_VSPMPCFG59,
-            riscv::CSR_VSPMPCFG60,
-            riscv::CSR_VSPMPCFG61,
-            riscv::CSR_VSPMPCFG62,
-            riscv::CSR_VSPMPCFG63: begin
+            riscv::CSR_VSPMPCFG: begin
               if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
-                automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_VSPMPCFG0) 
+                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
-                automatic int vspmp_idx = raw_indcsr_addr - riscv::CSR_VSPMPCFG0;
+                automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (vspmp_idx < CVA6Cfg.NrVSPMPEntries) begin
                   csr_rdata = CVA6Cfg.XLEN'({vspmpcfg_q[vspmp_idx], pmpcfg_q[pmp_idx]});
                 end
@@ -1259,74 +1076,11 @@ module csr_regfile
               else read_access_exception = 1'b1;
             end
             // vspmpaddr
-            riscv::CSR_VSPMPADDR0,
-            riscv::CSR_VSPMPADDR1,
-            riscv::CSR_VSPMPADDR2,
-            riscv::CSR_VSPMPADDR3,
-            riscv::CSR_VSPMPADDR4,
-            riscv::CSR_VSPMPADDR5,
-            riscv::CSR_VSPMPADDR6,
-            riscv::CSR_VSPMPADDR7,
-            riscv::CSR_VSPMPADDR8,
-            riscv::CSR_VSPMPADDR9,
-            riscv::CSR_VSPMPADDR10,
-            riscv::CSR_VSPMPADDR11,
-            riscv::CSR_VSPMPADDR12,
-            riscv::CSR_VSPMPADDR13,
-            riscv::CSR_VSPMPADDR14,
-            riscv::CSR_VSPMPADDR15,
-            riscv::CSR_VSPMPADDR16,
-            riscv::CSR_VSPMPADDR17,
-            riscv::CSR_VSPMPADDR18,
-            riscv::CSR_VSPMPADDR19,
-            riscv::CSR_VSPMPADDR20,
-            riscv::CSR_VSPMPADDR21,
-            riscv::CSR_VSPMPADDR22,
-            riscv::CSR_VSPMPADDR23,
-            riscv::CSR_VSPMPADDR24,
-            riscv::CSR_VSPMPADDR25,
-            riscv::CSR_VSPMPADDR26,
-            riscv::CSR_VSPMPADDR27,
-            riscv::CSR_VSPMPADDR28,
-            riscv::CSR_VSPMPADDR29,
-            riscv::CSR_VSPMPADDR30,
-            riscv::CSR_VSPMPADDR31,
-            riscv::CSR_VSPMPADDR32,
-            riscv::CSR_VSPMPADDR33,
-            riscv::CSR_VSPMPADDR34,
-            riscv::CSR_VSPMPADDR35,
-            riscv::CSR_VSPMPADDR36,
-            riscv::CSR_VSPMPADDR37,
-            riscv::CSR_VSPMPADDR38,
-            riscv::CSR_VSPMPADDR39,
-            riscv::CSR_VSPMPADDR40,
-            riscv::CSR_VSPMPADDR41,
-            riscv::CSR_VSPMPADDR42,
-            riscv::CSR_VSPMPADDR43,
-            riscv::CSR_VSPMPADDR44,
-            riscv::CSR_VSPMPADDR45,
-            riscv::CSR_VSPMPADDR46,
-            riscv::CSR_VSPMPADDR47,
-            riscv::CSR_VSPMPADDR48,
-            riscv::CSR_VSPMPADDR49,
-            riscv::CSR_VSPMPADDR50,
-            riscv::CSR_VSPMPADDR51,
-            riscv::CSR_VSPMPADDR52,
-            riscv::CSR_VSPMPADDR53,
-            riscv::CSR_VSPMPADDR54,
-            riscv::CSR_VSPMPADDR55,
-            riscv::CSR_VSPMPADDR56,
-            riscv::CSR_VSPMPADDR57,
-            riscv::CSR_VSPMPADDR58,
-            riscv::CSR_VSPMPADDR59,
-            riscv::CSR_VSPMPADDR60,
-            riscv::CSR_VSPMPADDR61,
-            riscv::CSR_VSPMPADDR62,
-            riscv::CSR_VSPMPADDR63: begin
+            riscv::CSR_VSPMPADDR: begin
               if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
-                automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_VSPMPADDR0) 
+                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
-                automatic int vspmp_idx = raw_indcsr_addr - riscv::CSR_VSPMPADDR0;
+                automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (vspmp_idx < CVA6Cfg.NrVSPMPEntries) begin
                   // We only support granularity 8 bytes (G=1)
                   // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
@@ -1497,7 +1251,7 @@ module csr_regfile
 
     // check for correct access rights and that we are writing
     if (csr_we) begin
-      if (!is_csrind_only) begin   // The CSR belongs to the normal CSR space and may be accessed either via direct or indirect access
+      if (!ind_csr_addr.csr_addr.csrind_only) begin   // The CSR belongs to the normal CSR space and may be accessed either via direct or indirect access
         unique case (conv_csr_addr.address)
           // Floating-Point
           riscv::CSR_FFLAGS: begin
@@ -2414,77 +2168,14 @@ module csr_regfile
       else begin
         unique case (raw_indcsr_addr)
           // spmpcfg
-          riscv::CSR_SPMPCFG0,
-          riscv::CSR_SPMPCFG1,
-          riscv::CSR_SPMPCFG2,
-          riscv::CSR_SPMPCFG3,
-          riscv::CSR_SPMPCFG4,
-          riscv::CSR_SPMPCFG5,
-          riscv::CSR_SPMPCFG6,
-          riscv::CSR_SPMPCFG7,
-          riscv::CSR_SPMPCFG8,
-          riscv::CSR_SPMPCFG9,
-          riscv::CSR_SPMPCFG10,
-          riscv::CSR_SPMPCFG11,
-          riscv::CSR_SPMPCFG12,
-          riscv::CSR_SPMPCFG13,
-          riscv::CSR_SPMPCFG14,
-          riscv::CSR_SPMPCFG15,
-          riscv::CSR_SPMPCFG16,
-          riscv::CSR_SPMPCFG17,
-          riscv::CSR_SPMPCFG18,
-          riscv::CSR_SPMPCFG19,
-          riscv::CSR_SPMPCFG20,
-          riscv::CSR_SPMPCFG21,
-          riscv::CSR_SPMPCFG22,
-          riscv::CSR_SPMPCFG23,
-          riscv::CSR_SPMPCFG24,
-          riscv::CSR_SPMPCFG25,
-          riscv::CSR_SPMPCFG26,
-          riscv::CSR_SPMPCFG27,
-          riscv::CSR_SPMPCFG28,
-          riscv::CSR_SPMPCFG29,
-          riscv::CSR_SPMPCFG30,
-          riscv::CSR_SPMPCFG31,
-          riscv::CSR_SPMPCFG32,
-          riscv::CSR_SPMPCFG33,
-          riscv::CSR_SPMPCFG34,
-          riscv::CSR_SPMPCFG35,
-          riscv::CSR_SPMPCFG36,
-          riscv::CSR_SPMPCFG37,
-          riscv::CSR_SPMPCFG38,
-          riscv::CSR_SPMPCFG39,
-          riscv::CSR_SPMPCFG40,
-          riscv::CSR_SPMPCFG41,
-          riscv::CSR_SPMPCFG42,
-          riscv::CSR_SPMPCFG43,
-          riscv::CSR_SPMPCFG44,
-          riscv::CSR_SPMPCFG45,
-          riscv::CSR_SPMPCFG46,
-          riscv::CSR_SPMPCFG47,
-          riscv::CSR_SPMPCFG48,
-          riscv::CSR_SPMPCFG49,
-          riscv::CSR_SPMPCFG50,
-          riscv::CSR_SPMPCFG51,
-          riscv::CSR_SPMPCFG52,
-          riscv::CSR_SPMPCFG53,
-          riscv::CSR_SPMPCFG54,
-          riscv::CSR_SPMPCFG55,
-          riscv::CSR_SPMPCFG56,
-          riscv::CSR_SPMPCFG57,
-          riscv::CSR_SPMPCFG58,
-          riscv::CSR_SPMPCFG59,
-          riscv::CSR_SPMPCFG60,
-          riscv::CSR_SPMPCFG61,
-          riscv::CSR_SPMPCFG62,
-          riscv::CSR_SPMPCFG63: begin
+          riscv::CSR_SPMPCFG: begin
             if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
-              automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_SPMPCFG0) + CVA6Cfg.NrPMPEntries;
-              automatic int spmp_idx = raw_indcsr_addr - riscv::CSR_SPMPCFG0;
+              automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
+              automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
               // Only M-mode accesses via miselect can unlock/modify locked SPMP CSRs
               if ((spmp_idx >= CVA6Cfg.NrSPMPEntries) || 
                   ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
-                    && !riscv::is_csrind_miselect(vs_csr_addr))
+                    && ind_csr_addr.csr_priv != riscv::PRIV_LVL_M)
               ) begin
                 spmpcfg_d = spmpcfg_q;
                 pmpcfg_d = pmpcfg_q;
@@ -2497,77 +2188,14 @@ module csr_regfile
             else update_access_exception = 1'b1;
           end
           // spmpaddr
-          riscv::CSR_SPMPADDR0,
-          riscv::CSR_SPMPADDR1,
-          riscv::CSR_SPMPADDR2,
-          riscv::CSR_SPMPADDR3,
-          riscv::CSR_SPMPADDR4,
-          riscv::CSR_SPMPADDR5,
-          riscv::CSR_SPMPADDR6,
-          riscv::CSR_SPMPADDR7,
-          riscv::CSR_SPMPADDR8,
-          riscv::CSR_SPMPADDR9,
-          riscv::CSR_SPMPADDR10,
-          riscv::CSR_SPMPADDR11,
-          riscv::CSR_SPMPADDR12,
-          riscv::CSR_SPMPADDR13,
-          riscv::CSR_SPMPADDR14,
-          riscv::CSR_SPMPADDR15,
-          riscv::CSR_SPMPADDR16,
-          riscv::CSR_SPMPADDR17,
-          riscv::CSR_SPMPADDR18,
-          riscv::CSR_SPMPADDR19,
-          riscv::CSR_SPMPADDR20,
-          riscv::CSR_SPMPADDR21,
-          riscv::CSR_SPMPADDR22,
-          riscv::CSR_SPMPADDR23,
-          riscv::CSR_SPMPADDR24,
-          riscv::CSR_SPMPADDR25,
-          riscv::CSR_SPMPADDR26,
-          riscv::CSR_SPMPADDR27,
-          riscv::CSR_SPMPADDR28,
-          riscv::CSR_SPMPADDR29,
-          riscv::CSR_SPMPADDR30,
-          riscv::CSR_SPMPADDR31,
-          riscv::CSR_SPMPADDR32,
-          riscv::CSR_SPMPADDR33,
-          riscv::CSR_SPMPADDR34,
-          riscv::CSR_SPMPADDR35,
-          riscv::CSR_SPMPADDR36,
-          riscv::CSR_SPMPADDR37,
-          riscv::CSR_SPMPADDR38,
-          riscv::CSR_SPMPADDR39,
-          riscv::CSR_SPMPADDR40,
-          riscv::CSR_SPMPADDR41,
-          riscv::CSR_SPMPADDR42,
-          riscv::CSR_SPMPADDR43,
-          riscv::CSR_SPMPADDR44,
-          riscv::CSR_SPMPADDR45,
-          riscv::CSR_SPMPADDR46,
-          riscv::CSR_SPMPADDR47,
-          riscv::CSR_SPMPADDR48,
-          riscv::CSR_SPMPADDR49,
-          riscv::CSR_SPMPADDR50,
-          riscv::CSR_SPMPADDR51,
-          riscv::CSR_SPMPADDR52,
-          riscv::CSR_SPMPADDR53,
-          riscv::CSR_SPMPADDR54,
-          riscv::CSR_SPMPADDR55,
-          riscv::CSR_SPMPADDR56,
-          riscv::CSR_SPMPADDR57,
-          riscv::CSR_SPMPADDR58,
-          riscv::CSR_SPMPADDR59,
-          riscv::CSR_SPMPADDR60,
-          riscv::CSR_SPMPADDR61,
-          riscv::CSR_SPMPADDR62,
-          riscv::CSR_SPMPADDR63: begin
+          riscv::CSR_SPMPADDR: begin
             if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
-              automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_SPMPADDR0) + CVA6Cfg.NrPMPEntries;
-              automatic int spmp_idx = raw_indcsr_addr - riscv::CSR_SPMPADDR0;
+              automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
+              automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
               // Only M-mode accesses via miselect can unlock/modify locked SPMP CSRs
               if ((spmp_idx >= CVA6Cfg.NrSPMPEntries) || 
                   ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
-                    && !riscv::is_csrind_miselect(vs_csr_addr))
+                    && ind_csr_addr.csr_priv != riscv::PRIV_LVL_M)
               ) begin
                 pmpaddr_d = pmpaddr_q;
               end
@@ -2578,74 +2206,11 @@ module csr_regfile
             else update_access_exception = 1'b1;
           end
           // vspmpcfg
-          riscv::CSR_VSPMPCFG0,
-          riscv::CSR_VSPMPCFG1,
-          riscv::CSR_VSPMPCFG2,
-          riscv::CSR_VSPMPCFG3,
-          riscv::CSR_VSPMPCFG4,
-          riscv::CSR_VSPMPCFG5,
-          riscv::CSR_VSPMPCFG6,
-          riscv::CSR_VSPMPCFG7,
-          riscv::CSR_VSPMPCFG8,
-          riscv::CSR_VSPMPCFG9,
-          riscv::CSR_VSPMPCFG10,
-          riscv::CSR_VSPMPCFG11,
-          riscv::CSR_VSPMPCFG12,
-          riscv::CSR_VSPMPCFG13,
-          riscv::CSR_VSPMPCFG14,
-          riscv::CSR_VSPMPCFG15,
-          riscv::CSR_VSPMPCFG16,
-          riscv::CSR_VSPMPCFG17,
-          riscv::CSR_VSPMPCFG18,
-          riscv::CSR_VSPMPCFG19,
-          riscv::CSR_VSPMPCFG20,
-          riscv::CSR_VSPMPCFG21,
-          riscv::CSR_VSPMPCFG22,
-          riscv::CSR_VSPMPCFG23,
-          riscv::CSR_VSPMPCFG24,
-          riscv::CSR_VSPMPCFG25,
-          riscv::CSR_VSPMPCFG26,
-          riscv::CSR_VSPMPCFG27,
-          riscv::CSR_VSPMPCFG28,
-          riscv::CSR_VSPMPCFG29,
-          riscv::CSR_VSPMPCFG30,
-          riscv::CSR_VSPMPCFG31,
-          riscv::CSR_VSPMPCFG32,
-          riscv::CSR_VSPMPCFG33,
-          riscv::CSR_VSPMPCFG34,
-          riscv::CSR_VSPMPCFG35,
-          riscv::CSR_VSPMPCFG36,
-          riscv::CSR_VSPMPCFG37,
-          riscv::CSR_VSPMPCFG38,
-          riscv::CSR_VSPMPCFG39,
-          riscv::CSR_VSPMPCFG40,
-          riscv::CSR_VSPMPCFG41,
-          riscv::CSR_VSPMPCFG42,
-          riscv::CSR_VSPMPCFG43,
-          riscv::CSR_VSPMPCFG44,
-          riscv::CSR_VSPMPCFG45,
-          riscv::CSR_VSPMPCFG46,
-          riscv::CSR_VSPMPCFG47,
-          riscv::CSR_VSPMPCFG48,
-          riscv::CSR_VSPMPCFG49,
-          riscv::CSR_VSPMPCFG50,
-          riscv::CSR_VSPMPCFG51,
-          riscv::CSR_VSPMPCFG52,
-          riscv::CSR_VSPMPCFG53,
-          riscv::CSR_VSPMPCFG54,
-          riscv::CSR_VSPMPCFG55,
-          riscv::CSR_VSPMPCFG56,
-          riscv::CSR_VSPMPCFG57,
-          riscv::CSR_VSPMPCFG58,
-          riscv::CSR_VSPMPCFG59,
-          riscv::CSR_VSPMPCFG60,
-          riscv::CSR_VSPMPCFG61,
-          riscv::CSR_VSPMPCFG62,
-          riscv::CSR_VSPMPCFG63: begin
+          riscv::CSR_VSPMPCFG: begin
             if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
-              automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_VSPMPCFG0) 
+              automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                         + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
-              automatic int vspmp_idx = raw_indcsr_addr - riscv::CSR_VSPMPCFG0;
+              automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
               // Only M-mode or accesses via miselect/siselect or HS-mode accesses via siselect can unlock/modify locked vSPMP CSRs
               if ((vspmp_idx >= CVA6Cfg.NrVSPMPEntries) || 
                   ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
@@ -2662,74 +2227,11 @@ module csr_regfile
             else update_access_exception = 1'b1;
           end
           // vspmpaddr
-          riscv::CSR_VSPMPADDR0,
-          riscv::CSR_VSPMPADDR1,
-          riscv::CSR_VSPMPADDR2,
-          riscv::CSR_VSPMPADDR3,
-          riscv::CSR_VSPMPADDR4,
-          riscv::CSR_VSPMPADDR5,
-          riscv::CSR_VSPMPADDR6,
-          riscv::CSR_VSPMPADDR7,
-          riscv::CSR_VSPMPADDR8,
-          riscv::CSR_VSPMPADDR9,
-          riscv::CSR_VSPMPADDR10,
-          riscv::CSR_VSPMPADDR11,
-          riscv::CSR_VSPMPADDR12,
-          riscv::CSR_VSPMPADDR13,
-          riscv::CSR_VSPMPADDR14,
-          riscv::CSR_VSPMPADDR15,
-          riscv::CSR_VSPMPADDR16,
-          riscv::CSR_VSPMPADDR17,
-          riscv::CSR_VSPMPADDR18,
-          riscv::CSR_VSPMPADDR19,
-          riscv::CSR_VSPMPADDR20,
-          riscv::CSR_VSPMPADDR21,
-          riscv::CSR_VSPMPADDR22,
-          riscv::CSR_VSPMPADDR23,
-          riscv::CSR_VSPMPADDR24,
-          riscv::CSR_VSPMPADDR25,
-          riscv::CSR_VSPMPADDR26,
-          riscv::CSR_VSPMPADDR27,
-          riscv::CSR_VSPMPADDR28,
-          riscv::CSR_VSPMPADDR29,
-          riscv::CSR_VSPMPADDR30,
-          riscv::CSR_VSPMPADDR31,
-          riscv::CSR_VSPMPADDR32,
-          riscv::CSR_VSPMPADDR33,
-          riscv::CSR_VSPMPADDR34,
-          riscv::CSR_VSPMPADDR35,
-          riscv::CSR_VSPMPADDR36,
-          riscv::CSR_VSPMPADDR37,
-          riscv::CSR_VSPMPADDR38,
-          riscv::CSR_VSPMPADDR39,
-          riscv::CSR_VSPMPADDR40,
-          riscv::CSR_VSPMPADDR41,
-          riscv::CSR_VSPMPADDR42,
-          riscv::CSR_VSPMPADDR43,
-          riscv::CSR_VSPMPADDR44,
-          riscv::CSR_VSPMPADDR45,
-          riscv::CSR_VSPMPADDR46,
-          riscv::CSR_VSPMPADDR47,
-          riscv::CSR_VSPMPADDR48,
-          riscv::CSR_VSPMPADDR49,
-          riscv::CSR_VSPMPADDR50,
-          riscv::CSR_VSPMPADDR51,
-          riscv::CSR_VSPMPADDR52,
-          riscv::CSR_VSPMPADDR53,
-          riscv::CSR_VSPMPADDR54,
-          riscv::CSR_VSPMPADDR55,
-          riscv::CSR_VSPMPADDR56,
-          riscv::CSR_VSPMPADDR57,
-          riscv::CSR_VSPMPADDR58,
-          riscv::CSR_VSPMPADDR59,
-          riscv::CSR_VSPMPADDR60,
-          riscv::CSR_VSPMPADDR61,
-          riscv::CSR_VSPMPADDR62,
-          riscv::CSR_VSPMPADDR63: begin
+          riscv::CSR_VSPMPADDR: begin
             if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
-                automatic int pmp_idx = (raw_indcsr_addr - riscv::CSR_VSPMPADDR0) 
+                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
-                automatic int vspmp_idx = raw_indcsr_addr - riscv::CSR_VSPMPADDR0;
+                automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 // Only M-mode/HS-mode accesses via vsiselect can unlock/modify locked vSPMP CSRs
                 if ((vspmp_idx >= CVA6Cfg.NrVSPMPEntries) || 
                     ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
