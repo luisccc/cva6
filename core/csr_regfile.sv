@@ -288,8 +288,8 @@ module csr_regfile
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
 
-  riscv::pmpcfg_t [63:0] pmpcfg_q, pmpcfg_d, pmpcfg_next;
-  logic [63:0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
+  riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource : 0):0] pmpcfg_q, pmpcfg_d, pmpcfg_next;
+  logic [(CVA6Cfg.NrPMPResource>0?CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
   logic [MHPMCounterNum+3-1:0] mcountinhibit_d, mcountinhibit_q;
   logic [63:0] spmpswitch;
   logic [63:0] vspmpswitch;
@@ -3171,15 +3171,11 @@ module csr_regfile
       // wait for interrupt
       wfi_q                  <= 1'b0;
       // pmp
-      for (int i = 0; i < 64; i++) begin
-        if (i < CVA6Cfg.NrPMPResource) begin
-          pmpcfg_q[i]  <= riscv::pmpcfg_t'(CVA6Cfg.PMPCfgRstVal[i]);
-          pmpaddr_q[i] <= CVA6Cfg.PMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
-        end else begin
-          pmpcfg_q[i]  <= '0;
-          pmpaddr_q[i] <= '0;
-        end
+      for (int i = 0; i < CVA6Cfg.NrPMPResource; i++) begin
+        pmpcfg_q[i]  <= riscv::pmpcfg_t'(CVA6Cfg.PMPCfgRstVal[i]);
+        pmpaddr_q[i] <= CVA6Cfg.PMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
       end
+      pmpcfg_q[CVA6Cfg.NrPMPResource]  <= '0;
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -3291,6 +3287,8 @@ module csr_regfile
         pmpaddr_next[i] = pmpaddr_q[i];
       end
     end
+    pmpcfg_d[CVA6Cfg.NrPMPResource] = '0;
+    pmpcfg_next[CVA6Cfg.NrPMPResource] = '0;
   end
 
   //-------------
