@@ -298,6 +298,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
   logic wfi_d, wfi_q;
+  logic hvip_vseip_q, hvip_vseip_d;
 
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
@@ -640,7 +641,7 @@ module csr_regfile
           if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
           riscv::CSR_HVIP:
-          if (CVA6Cfg.RVH) csr_rdata = mip_q & VS_DELEG_INTERRUPTS[CVA6Cfg.XLEN-1:0];
+          if (CVA6Cfg.RVH) csr_rdata = (mip_q & (riscv::MIP_VSSIP | riscv::MIP_VSTIP)) | (hvip_vseip_q << riscv::IRQ_VS_EXT);
           else read_access_exception = 1'b1;
           riscv::CSR_HVIPH:
           if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = '0;
@@ -1254,6 +1255,10 @@ module csr_regfile
               end
               else read_access_exception = 1'b1;
             end
+            // Indirect accesses to unimplemented CSRs
+            riscv::CSR_ILLEGAL: begin
+              read_access_exception = 1'b1;
+            end
           endcase
         end
       end
@@ -1386,6 +1391,7 @@ module csr_regfile
       hgeie_d                  = hgeie_q;
       hcounteren_d             = hcounteren_q;
       htinst_d                 = htinst_q;
+      hvip_vseip_d             = hvip_vseip_q;
       htval_d                  = htval_q;
       en_ld_st_g_translation_d = en_ld_st_g_translation_q;
     end
@@ -1835,8 +1841,9 @@ module csr_regfile
           end
           riscv::CSR_HVIP: begin
             if (CVA6Cfg.RVH) begin
-              mask  = VS_DELEG_INTERRUPTS[CVA6Cfg.XLEN-1:0];
+              mask  = (riscv::MIP_VSSIP | riscv::MIP_VSTIP);
               mip_d = (mip_q & ~mask) | (csr_wdata & mask);
+              hvip_vseip_d = csr_wdata[riscv::IRQ_VS_EXT];
             end else begin
               update_access_exception = 1'b1;
             end
@@ -2495,22 +2502,26 @@ module csr_regfile
           // vspmpaddr
           riscv::CSR_VSPMPADDR: begin
             if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
-                automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
-                                          + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
-                automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
-                // Only M-mode/HS-mode accesses via vsiselect can unlock/modify locked vSPMP CSRs
-                if ((vspmp_idx >= CVA6Cfg.NrVSPMPEntries) || 
-                    ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
-                      && !(priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)))
-                ) begin
-                  pmpaddr_d = pmpaddr_q;
-                end
-                else begin
-                  pmpaddr_d[pmp_idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
-                end
+              automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
+                                        + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
+              automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
+              // Only M-mode/HS-mode accesses via vsiselect can unlock/modify locked vSPMP CSRs
+              if ((vspmp_idx >= CVA6Cfg.NrVSPMPEntries) || 
+                  ((pmpcfg_q[pmp_idx].locked || (pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) 
+                    && !(priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)))
+              ) begin
+                pmpaddr_d = pmpaddr_q;
               end
-              else update_access_exception = 1'b1;
+              else begin
+                pmpaddr_d[pmp_idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
+              end
             end
+              else update_access_exception = 1'b1;
+          end
+          // Indirect accesses to unimplemented CSRs
+          riscv::CSR_ILLEGAL: begin
+            update_access_exception = 1'b1;
+          end
         endcase
       end
     end
@@ -2576,7 +2587,7 @@ module csr_regfile
     // HS-mode Guest External Interrupt
     mip_d[riscv::IRQ_HS_EXT] = |(hgeip & hgeie_q);
     // VS-mode Guest External Interrupt
-    mip_d[riscv::IRQ_VS_EXT] = hgeip[hstatus_q.vgein] | mip_q[riscv::IRQ_VS_EXT];
+    mip_d[riscv::IRQ_VS_EXT] = hgeip[hstatus_q.vgein] | hvip_vseip_q;
 
     // -----------------------
     // Manage Exception Stack
@@ -3420,6 +3431,7 @@ module csr_regfile
         hcounteren_q             <= {CVA6Cfg.XLEN{1'b0}};
         htval_q                  <= {CVA6Cfg.XLEN{1'b0}};
         htinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
+        hvip_vseip_q             <= 1'b0;
         // virtual supervisor mode registers
         vsstatus_q               <= 64'b0;
         vsepc_q                  <= {CVA6Cfg.XLEN{1'b0}};
@@ -3512,6 +3524,7 @@ module csr_regfile
         hcounteren_q             <= hcounteren_d;
         htval_q                  <= htval_d;
         htinst_q                 <= htinst_d;
+        hvip_vseip_q             <= hvip_vseip_d;
         // virtual supervisor mode registers
         vsstatus_q               <= vsstatus_d;
         vsepc_q                  <= vsepc_d;
