@@ -68,6 +68,10 @@ module id_stage #(
     input logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,
     // Interrupt control status - CSR_REGFILE
     input irq_ctrl_t irq_ctrl_i,
+    // VS-mode timer interrupt - CSR_REGFILE
+    input logic vs_timer_irq_i,
+    // VS-mode external interrupt - CSR_REGFILE
+    input logic vs_ext_irq_i,
     // Is current mode debug ? - CSR_REGFILE
     input logic debug_mode_i,
     // Trap virtual memory - CSR_REGFILE
@@ -240,6 +244,8 @@ module id_stage #(
     ) decoder_i (
         .debug_req_i,
         .irq_ctrl_i,
+        .vs_timer_irq_i,
+        .vs_ext_irq_i,
         .irq_i,
         .pc_i                      (fetch_entry_i[i].address),
         .is_compressed_i           (is_compressed_cmp[i]),

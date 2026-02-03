@@ -90,6 +90,10 @@ module csr_regfile
     output riscv::xs_t vs_o,
     // interrupt management to id stage - ID_STAGE
     output irq_ctrl_t irq_ctrl_o,
+    // VS timer interrupt line - ID_STAGE
+    output logic vs_timer_irq_o,
+    // VS external interrupt line - ID_STAGE
+    output logic vs_ext_irq_o,
     // Enable virtual address translation - EX_STAGE
     output logic en_translation_o,
     // Enable G-Stage address translation - EX_STAGE
@@ -132,6 +136,8 @@ module csr_regfile
     input imsic_pkg::csr_channel_from_imsic_t imsic_csr_i,
     // inter processor interrupt -> connected to machine mode sw - SUBSYSTEM
     input logic ipi_i,
+    // RTC time value - SUBSYSTEM
+    input logic [63:0] timer_i,
     // debug request in - ID_STAGE
     input logic debug_req_i,
     // TO_BE_COMPLETED - FRONTEND
@@ -270,6 +276,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] mtval2_q, mtval2_d;
   logic [CVA6Cfg.XLEN-1:0] miselect_q, miselect_d;
   logic fiom_d, fiom_q;
+  logic mstce_d, mstce_q;
 
   logic [CVA6Cfg.XLEN-1:0] stvec_q, stvec_d;
   logic [CVA6Cfg.XLEN-1:0] scounteren_q, scounteren_d;
@@ -285,6 +292,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] hgeie_q, hgeie_d;
   logic [CVA6Cfg.XLEN-1:0] htinst_q, htinst_d;
   logic [CVA6Cfg.XLEN-1:0] htval_q, htval_d;
+  logic hstce_d, hstce_q;
 
   logic [CVA6Cfg.XLEN-1:0] vstvec_q, vstvec_d;
   logic [CVA6Cfg.XLEN-1:0] vsscratch_q, vsscratch_d;
@@ -298,10 +306,12 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
   logic wfi_d, wfi_q;
-  logic hvip_vseip_q, hvip_vseip_d;
 
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
+  logic [63:0] stimecmp_q, stimecmp_d;
+  logic [63:0] htimedelta_q, htimedelta_d;
+  logic [63:0] vstimecmp_q, vstimecmp_d;
 
   riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource : 0):0] pmpcfg_q, pmpcfg_d, pmpcfg_next;
   logic [(CVA6Cfg.NrPMPResource>0?CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_q, pmpaddr_d, pmpaddr_next;
@@ -472,6 +482,12 @@ module csr_regfile
           riscv::CSR_VSTVAL:
           if (CVA6Cfg.RVH) csr_rdata = vstval_q;
           else read_access_exception = 1'b1;
+          riscv::CSR_VSTIMECMP:
+          if (CVA6Cfg.RVH && CVA6Cfg.RVSSTC) csr_rdata = vstimecmp_q[CVA6Cfg.XLEN-1:0];
+          else read_access_exception = 1'b1;
+          riscv::CSR_VSTIMECMPH:
+          if (CVA6Cfg.RVH && CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 32) csr_rdata = vstimecmp_q[63:32];
+          else read_access_exception = 1'b1;
           riscv::CSR_VSISELECT:
           if (CVA6Cfg.RVH && CVA6Cfg.RVCSRIND) csr_rdata = vsiselect_q;
           else read_access_exception = 1'b1;
@@ -564,6 +580,12 @@ module csr_regfile
           riscv::CSR_STVAL:
           if (CVA6Cfg.RVS) csr_rdata = stval_q;
           else read_access_exception = 1'b1;
+          riscv::CSR_STIMECMP:
+          if (CVA6Cfg.RVS && CVA6Cfg.RVSSTC) csr_rdata = stimecmp_q[CVA6Cfg.XLEN-1:0];
+          else read_access_exception = 1'b1;
+          riscv::CSR_STIMECMPH:
+          if (CVA6Cfg.RVS && CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 32) csr_rdata = stimecmp_q[63:32];
+          else read_access_exception = 1'b1;
           riscv::CSR_SISELECT:
           if (CVA6Cfg.RVS && CVA6Cfg.RVCSRIND) csr_rdata = siselect_q;
           else read_access_exception = 1'b1;
@@ -641,7 +663,7 @@ module csr_regfile
           if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
           riscv::CSR_HVIP:
-          if (CVA6Cfg.RVH) csr_rdata = (mip_q & (riscv::MIP_VSSIP | riscv::MIP_VSTIP)) | (hvip_vseip_q << riscv::IRQ_VS_EXT);
+          if (CVA6Cfg.RVH) csr_rdata = mip_q & VS_DELEG_INTERRUPTS[CVA6Cfg.XLEN-1:0];
           else read_access_exception = 1'b1;
           riscv::CSR_HVIPH:
           if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = '0;
@@ -670,6 +692,12 @@ module csr_regfile
           riscv::CSR_HTINST:
           if (CVA6Cfg.RVH) csr_rdata = htinst_q;
           else read_access_exception = 1'b1;
+          riscv::CSR_HTIMEDELTA:
+          if (CVA6Cfg.RVH) csr_rdata = htimedelta_q[CVA6Cfg.XLEN-1:0];
+          else read_access_exception = 1'b1;
+          riscv::CSR_HTIMEDELTAH:
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = htimedelta_q[63:32];
+          else read_access_exception = 1'b1;
           riscv::CSR_HGEIE:
           if (CVA6Cfg.RVH) csr_rdata = hgeie_q;
           else read_access_exception = 1'b1;
@@ -677,10 +705,13 @@ module csr_regfile
           if (CVA6Cfg.RVH) csr_rdata = hgeip;
           else read_access_exception = 1'b1;
           riscv::CSR_HENVCFG:
-          if (CVA6Cfg.RVH) csr_rdata = '0 | {{CVA6Cfg.XLEN - 1{1'b0}}, fiom_q};
+          if (CVA6Cfg.RVH) begin
+            if (CVA6Cfg.XLEN == 64) csr_rdata = {{hstce_q & mstce_q, {CVA6Cfg.XLEN - 2{1'b0}}}, fiom_q};
+            else csr_rdata = {{CVA6Cfg.XLEN - 1{1'b0}}, fiom_q};
+          end
           else read_access_exception = 1'b1;
           riscv::CSR_HENVCFGH:
-          if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) csr_rdata = '0;
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) csr_rdata = {hstce_q & mstce_q, {CVA6Cfg.XLEN - 1{1'b0}}};
           else read_access_exception = 1'b1;
           riscv::CSR_HGATP: begin
             if (CVA6Cfg.RVH) begin
@@ -770,14 +801,12 @@ module csr_regfile
           riscv::CSR_MIPH:
           if (CVA6Cfg.XLEN == 32) csr_rdata = '0;
           else read_access_exception = 1'b1;
-          riscv::CSR_MENVCFG: begin
-            if (CVA6Cfg.RVU) csr_rdata = '0 | fiom_q;
-            else read_access_exception = 1'b1;
-          end
-          riscv::CSR_MENVCFGH: begin
-            if (CVA6Cfg.RVU && CVA6Cfg.XLEN == 32) csr_rdata = '0;
-            else read_access_exception = 1'b1;
-          end
+          riscv::CSR_MENVCFG:
+          if (CVA6Cfg.XLEN == 64) csr_rdata = {{mstce_q, {CVA6Cfg.XLEN - 2{1'b0}}}, fiom_q};
+          else csr_rdata = {{CVA6Cfg.XLEN - 1{1'b0}}, fiom_q};
+          riscv::CSR_MENVCFGH:
+          if (CVA6Cfg.XLEN == 32) csr_rdata = {mstce_q, {CVA6Cfg.XLEN - 1{1'b0}}};
+          else read_access_exception = 1'b1;
           riscv::CSR_MISELECT:
           if (CVA6Cfg.RVCSRIND) csr_rdata = miselect_q;
           else read_access_exception = 1'b1;
@@ -819,6 +848,12 @@ module csr_regfile
           if (CVA6Cfg.RVZicntr)
             if (CVA6Cfg.XLEN == 32) csr_rdata = cycle_q[63:32];
             else read_access_exception = 1'b1;
+          else read_access_exception = 1'b1;
+          riscv::CSR_TIME:
+          if (CVA6Cfg.RVZicntr) csr_rdata = timer_i[CVA6Cfg.XLEN-1:0];
+          else read_access_exception = 1'b1;
+          riscv::CSR_TIMEH:
+          if (CVA6Cfg.RVZicntr && CVA6Cfg.XLEN == 32) csr_rdata = timer_i[63:32];
           else read_access_exception = 1'b1;
           riscv::CSR_INSTRET:
           if (CVA6Cfg.RVZicntr) csr_rdata = instret_q[CVA6Cfg.XLEN-1:0];
@@ -1368,6 +1403,7 @@ module csr_regfile
     end
 
     fiom_d     = fiom_q;
+    mstce_d    = mstce_q;
     dcache_d   = dcache_q;
     icache_d   = icache_q;
     acc_cons_d = acc_cons_q;
@@ -1380,6 +1416,7 @@ module csr_regfile
       vstval_d                 = vstval_q;
       vsiselect_d              = vsiselect_q;
       vsatp_d                  = vsatp_q;
+      vstimecmp_d              = vstimecmp_q;
       vspmpcfg_d               = vspmpcfg_q;
       vspmpswitch_d            = vspmpswitch_q;
       vspmpswitchh_d           = vspmpswitchh_q;
@@ -1391,8 +1428,9 @@ module csr_regfile
       hgeie_d                  = hgeie_q;
       hcounteren_d             = hcounteren_q;
       htinst_d                 = htinst_q;
-      hvip_vseip_d             = hvip_vseip_q;
+      htimedelta_d             = htimedelta_q;
       htval_d                  = htval_q;
+      hstce_d                  = hstce_q;
       en_ld_st_g_translation_d = en_ld_st_g_translation_q;
     end
 
@@ -1403,6 +1441,7 @@ module csr_regfile
       scounteren_d   = scounteren_q;
       sscratch_d     = sscratch_q;
       stval_d        = stval_q;
+      stimecmp_d     = stimecmp_q;
       siselect_d     = siselect_q;
       satp_d         = satp_q;
       spmpcfg_d      = spmpcfg_q;
@@ -1539,6 +1578,12 @@ module csr_regfile
           else update_access_exception = 1'b1;
           riscv::CSR_VSTVAL:
           if (CVA6Cfg.RVH) vstval_d = csr_wdata;
+          else update_access_exception = 1'b1;
+          riscv::CSR_VSTIMECMP:
+          if (CVA6Cfg.RVH && CVA6Cfg.RVSSTC) vstimecmp_d[CVA6Cfg.XLEN-1:0] = csr_wdata;
+          else update_access_exception = 1'b1;
+          riscv::CSR_VSTIMECMPH:
+          if (CVA6Cfg.RVH && CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 32) vstimecmp_d[63:32] = csr_wdata;
           else update_access_exception = 1'b1;
           riscv::CSR_VSISELECT:
           if (CVA6Cfg.RVH && CVA6Cfg.RVCSRIND) vsiselect_d = csr_wdata;
@@ -1691,6 +1736,12 @@ module csr_regfile
           riscv::CSR_STVAL:
           if (CVA6Cfg.RVS && CVA6Cfg.TvalEn) stval_d = csr_wdata;
           else update_access_exception = 1'b1;
+          riscv::CSR_STIMECMP:
+          if (CVA6Cfg.RVS && CVA6Cfg.RVSSTC) stimecmp_d[CVA6Cfg.XLEN-1:0] = csr_wdata;
+          else update_access_exception = 1'b1;
+          riscv::CSR_STIMECMPH:
+          if (CVA6Cfg.RVS && CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 32) stimecmp_d[63:32] = csr_wdata;
+          else update_access_exception = 1'b1;
           riscv::CSR_SISELECT:
           if (CVA6Cfg.RVS && CVA6Cfg.RVCSRIND) siselect_d = csr_wdata;
           else update_access_exception = 1'b1;
@@ -1841,9 +1892,8 @@ module csr_regfile
           end
           riscv::CSR_HVIP: begin
             if (CVA6Cfg.RVH) begin
-              mask  = (riscv::MIP_VSSIP | riscv::MIP_VSTIP);
+              mask  = VS_DELEG_INTERRUPTS[CVA6Cfg.XLEN-1:0];
               mip_d = (mip_q & ~mask) | (csr_wdata & mask);
-              hvip_vseip_d = csr_wdata[riscv::IRQ_VS_EXT];
             end else begin
               update_access_exception = 1'b1;
             end
@@ -1880,6 +1930,12 @@ module csr_regfile
               update_access_exception = 1'b1;
             end
           end
+          riscv::CSR_HTIMEDELTA:
+          if (CVA6Cfg.RVH) htimedelta_d[CVA6Cfg.XLEN-1:0] = csr_wdata;
+          else update_access_exception = 1'b1;
+          riscv::CSR_HTIMEDELTAH:
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) htimedelta_d[63:32] = csr_wdata;
+          else update_access_exception = 1'b1;
           riscv::CSR_HTINST: begin
             if (CVA6Cfg.RVH) begin
               htinst_d = {{CVA6Cfg.XLEN - 32{1'b0}}, csr_wdata[31:0]};
@@ -1963,10 +2019,16 @@ module csr_regfile
             flush_o = 1'b1;
           end
           riscv::CSR_HENVCFG:
-          if (CVA6Cfg.RVH) fiom_d = csr_wdata[0];
+          if (CVA6Cfg.RVH) begin
+            fiom_d = csr_wdata[0];
+            if (CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 64) hstce_d = csr_wdata[63] & mstce_q;
+          end
           else update_access_exception = 1'b1;
           riscv::CSR_HENVCFGH:
-          if (!CVA6Cfg.RVH || (CVA6Cfg.XLEN != 32)) update_access_exception = 1'b1;
+          if (CVA6Cfg.RVH && CVA6Cfg.XLEN == 32) begin
+            if (CVA6Cfg.RVSSTC) hstce_d = csr_wdata[31] & mstce_q;
+          end
+          else update_access_exception = 1'b1;
           riscv::CSR_MSTATUS: begin
             mstatus_d    = {{64 - CVA6Cfg.XLEN{1'b0}}, csr_wdata};
             mstatus_d.xs = riscv::Off;
@@ -2113,12 +2175,12 @@ module csr_regfile
           riscv::CSR_MIP: begin
             if (CVA6Cfg.RVH) begin
               mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
-                      | CVA6Cfg.XLEN'(riscv::MIP_STIP)
+                      | ((CVA6Cfg.RVSSTC && mstce_q) ? '0 : CVA6Cfg.XLEN'(riscv::MIP_STIP))
                       | CVA6Cfg.XLEN'(riscv::MIP_SEIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_VSSIP);
             end else if (CVA6Cfg.RVS) begin
               mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
-                      | CVA6Cfg.XLEN'(riscv::MIP_STIP)
+                      | ((CVA6Cfg.RVSSTC && mstce_q) ? '0 : CVA6Cfg.XLEN'(riscv::MIP_STIP))
                       | CVA6Cfg.XLEN'(riscv::MIP_SEIP);
             end else begin
               mask = '0;
@@ -2126,10 +2188,16 @@ module csr_regfile
             mip_d = (mip_q & ~mask) | (csr_wdata & mask);
           end
           riscv::CSR_MIPH: if (CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
-          riscv::CSR_MENVCFG: if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
-          riscv::CSR_MENVCFGH: begin
-            if (!CVA6Cfg.RVU || CVA6Cfg.XLEN != 32) update_access_exception = 1'b1;
+          riscv::CSR_MENVCFG: begin
+            fiom_d = csr_wdata[0];
+            if (CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 64)
+              mstce_d = csr_wdata[64];
           end
+          riscv::CSR_MENVCFGH:
+          if (CVA6Cfg.XLEN == 32) begin
+            if (CVA6Cfg.RVSSTC) mstce_d = csr_wdata[31];
+          end
+          else update_access_exception = 1'b1;
           riscv::CSR_MISELECT:
           if (CVA6Cfg.RVCSRIND) miselect_d = csr_wdata;
           else update_access_exception = 1'b1;
@@ -2584,10 +2652,27 @@ module csr_regfile
     mip_d[riscv::IRQ_M_SOFT] = '0;
     // Timer interrupt pending, coming from platform timer
     mip_d[riscv::IRQ_M_TIMER] = time_irq_i;
+    // Supervisor timer interrupt
+    if(CVA6Cfg.RVS && CVA6Cfg.RVSSTC) begin
+      mip_d[riscv::IRQ_S_TIMER] = (mstce_q) ? ((timer_i >= stimecmp_q) && (stimecmp_q != '0)) : 1'b0;
+    end
     // HS-mode Guest External Interrupt
     mip_d[riscv::IRQ_HS_EXT] = |(hgeip & hgeie_q);
-    // VS-mode Guest External Interrupt
-    mip_d[riscv::IRQ_VS_EXT] = hgeip[hstatus_q.vgein] | hvip_vseip_q;
+
+    // VS-mode timer and external interrupts
+    if (CVA6Cfg.RVH) begin
+      vs_ext_irq_o = hgeip[hstatus_q.vgein];
+      if (CVA6Cfg.RVSSTC) begin
+        vs_timer_irq_o = (mstce_q && hstce_q) ? 
+                          (((timer_i + htimedelta_q) >= vstimecmp_q) && (vstimecmp_q != '0)) :
+                          1'b0;
+      end
+      else vs_timer_irq_o = 1'b0;
+    end
+    else begin
+      vs_timer_irq_o = 1'b0;
+      vs_ext_irq_o = 1'b0;
+    end
 
     // -----------------------
     // Manage Exception Stack
@@ -3076,14 +3161,19 @@ module csr_regfile
               virtual_privilege_violation = v_q & mcounteren_q[sel_cnt_en] & ~hcounteren_q[sel_cnt_en];
               privilege_violation = ~mcounteren_q[sel_cnt_en];
             end else if (priv_lvl_o == riscv::PRIV_LVL_U && CVA6Cfg.RVU) begin
-              virtual_privilege_violation = v_q & mcounteren_q[sel_cnt_en] & ~hcounteren_q[sel_cnt_en];
-              if (v_q) begin
-                privilege_violation = ~mcounteren_q[sel_cnt_en] & ~scounteren_q[sel_cnt_en] & hcounteren_q[sel_cnt_en];
-              end else begin
-                privilege_violation = ~mcounteren_q[sel_cnt_en] & ~scounteren_q[sel_cnt_en];
-              end
+              virtual_privilege_violation = v_q & mcounteren_q[sel_cnt_en] & (~hcounteren_q[sel_cnt_en] | ~scounteren_q[sel_cnt_en]);
+              privilege_violation = ~mcounteren_q[sel_cnt_en] | (~v_q & ~scounteren_q[sel_cnt_en]);
             end else if (priv_lvl_o == riscv::PRIV_LVL_M) begin
               privilege_violation = 1'b0;
+            end
+          end
+        end
+        if (CVA6Cfg.RVSSTC) begin
+          if (csr_addr_i inside {riscv::CSR_VSTIMECMP, riscv::CSR_VSTIMECMPH, 
+                                 riscv::CSR_STIMECMP, riscv::CSR_STIMECMPH}) begin
+            if (curr_priv == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
+              virtual_privilege_violation = v_q & ((mstce_q & ~hstce_q) | (mcounteren_q[1] & ~hcounteren_q[1]));
+              privilege_violation = ~mstce_q | ~mcounteren_q[1];
             end
           end
         end
@@ -3129,6 +3219,13 @@ module csr_regfile
             end
           end
         end
+        if (CVA6Cfg.RVSSTC) begin
+          if (csr_addr_i inside {riscv::CSR_STIMECMP, riscv::CSR_STIMECMPH}) begin
+            if (priv_lvl_o == riscv::PRIV_LVL_S && CVA6Cfg.RVS) begin
+              privilege_violation = ~mstce_q | ~mcounteren_q[1];
+            end
+          end
+        end
       end
     end
   end
@@ -3170,7 +3267,8 @@ module csr_regfile
     wfi_d = wfi_q;
     // if there is any (enabled) interrupt pending un-stall the core
     // also un-stall if we want to enter debug mode
-    if (|(mip_q & mie_q) || (CVA6Cfg.DebugEn && debug_req_i) || irq_i[1]) begin
+    if (|(mip_q & mie_q) || (CVA6Cfg.DebugEn && debug_req_i) || (mie_q[riscv::IRQ_S_EXT] & irq_i[1]) ||
+          (mie_q[riscv::IRQ_VS_TIMER] && vs_timer_irq_o) || (mie_q[riscv::IRQ_VS_EXT] && vs_ext_irq_o)) begin
       wfi_d = 1'b0;
       // or alternatively if there is no exception pending and we are not in debug mode wait here
       // for the interrupt
@@ -3228,21 +3326,54 @@ module csr_regfile
   always_comb begin
     // When the SEIP bit is read with a CSRRW, CSRRS, or CSRRC instruction, the value
     // returned in the rd destination register contains the logical-OR of the software-writable
-    // bit and the interrupt signal from the interrupt controller.
+    // bit and the interrupt signal from the interrupt controller or timer comparison.
     csr_rdata_o = csr_rdata;
 
-    unique case (conv_csr_addr.address)
-      riscv::CSR_MIP:
-      csr_rdata_o = csr_rdata | ({{CVA6Cfg.XLEN - 1{1'b0}}, irq_i[1]} << riscv::IRQ_S_EXT);
-      // in supervisor mode we also need to check whether we delegated this bit
-      riscv::CSR_SIP: begin
-        if (CVA6Cfg.RVS) begin
-          csr_rdata_o = csr_rdata
-                              | ({{CVA6Cfg.XLEN-1{1'b0}}, (irq_i[1] & mideleg_q[riscv::IRQ_S_EXT])} << riscv::IRQ_S_EXT);
+    if (CVA6Cfg.RVH) begin
+      unique case (conv_csr_addr.address)
+        riscv::CSR_MIP: begin
+          if (CVA6Cfg.RVSSTC)
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(irq_i[1]) << riscv::IRQ_S_EXT) | 
+                                      (CVA6Cfg.XLEN'(vs_timer_irq_o) << riscv::IRQ_VS_TIMER) | 
+                                      (CVA6Cfg.XLEN'(vs_ext_irq_o) << riscv::IRQ_VS_EXT);
+          else
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(irq_i[1]) << riscv::IRQ_S_EXT) | 
+                                      (CVA6Cfg.XLEN'(vs_ext_irq_o) << riscv::IRQ_VS_EXT);
         end
-      end
-      default: ;
-    endcase
+        // in less privileged modes we need to check whether the interrupt is delegated
+        riscv::CSR_SIP: begin
+          csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(irq_i[1] & mideleg_q[riscv::IRQ_S_EXT]) << riscv::IRQ_S_EXT);
+        end
+        riscv::CSR_HIP: begin
+          if (CVA6Cfg.RVSSTC)
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(vs_timer_irq_o) << riscv::IRQ_VS_TIMER) |
+                                      (CVA6Cfg.XLEN'(vs_ext_irq_o) << riscv::IRQ_VS_EXT);
+          else
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(vs_ext_irq_o) << riscv::IRQ_VS_EXT);
+        end
+        riscv::CSR_VSIP: begin
+          if (CVA6Cfg.RVSSTC)
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(vs_timer_irq_o & hideleg_q[riscv::IRQ_VS_TIMER]) << riscv::IRQ_VS_TIMER) |
+                                      (CVA6Cfg.XLEN'(vs_ext_irq_o & hideleg_q[riscv::IRQ_VS_EXT]) << riscv::IRQ_VS_EXT);
+          else
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(vs_ext_irq_o & hideleg_q[riscv::IRQ_VS_EXT]) << riscv::IRQ_VS_EXT);
+        end
+        default:;
+      endcase
+    end
+    else begin
+      unique case (conv_csr_addr.address)
+        riscv::CSR_MIP:
+          csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(irq_i[1]) << riscv::IRQ_S_EXT);
+        // in less privileged modes we need to check whether the interrupt is delegated
+        riscv::CSR_SIP: begin
+          if (CVA6Cfg.RVS) begin
+            csr_rdata_o = csr_rdata | (CVA6Cfg.XLEN'(irq_i[1] & mideleg_q[riscv::IRQ_S_EXT]) << riscv::IRQ_S_EXT);
+          end
+        end
+        default: ;
+      endcase
+    end
   end
 
   assign imsic_csr_o.imsic_addr = (imsic_csr_o.imsic_we || imsic_csr_o.imsic_claim) ? wimsic_addr : rimsic_addr;
@@ -3393,6 +3524,7 @@ module csr_regfile
       mtval_q          <= {CVA6Cfg.XLEN{1'b0}};
       miselect_q       <= {CVA6Cfg.XLEN{1'b0}};
       fiom_q           <= '0;
+      mstce_q          <= 1'b0;
       dcache_q         <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       icache_q         <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       mcountinhibit_q  <= '0;
@@ -3407,6 +3539,7 @@ module csr_regfile
         scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
         sscratch_q   <= {CVA6Cfg.XLEN{1'b0}};
         stval_q      <= {CVA6Cfg.XLEN{1'b0}};
+        stimecmp_q   <= {CVA6Cfg.XLEN{1'b0}}; 
         siselect_q   <= {CVA6Cfg.XLEN{1'b0}};
         satp_q       <= {CVA6Cfg.XLEN{1'b0}};
         // Upon reset, all PMP resources belong to the M-mode PMP
@@ -3430,8 +3563,9 @@ module csr_regfile
         hspmpswitchh_q           <= {CVA6Cfg.XLEN{1'b0}};
         hcounteren_q             <= {CVA6Cfg.XLEN{1'b0}};
         htval_q                  <= {CVA6Cfg.XLEN{1'b0}};
+        htimedelta_q             <= {CVA6Cfg.XLEN{1'b0}};
+        hstce_q                  <= 1'b0;
         htinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
-        hvip_vseip_q             <= 1'b0;
         // virtual supervisor mode registers
         vsstatus_q               <= 64'b0;
         vsepc_q                  <= {CVA6Cfg.XLEN{1'b0}};
@@ -3439,6 +3573,7 @@ module csr_regfile
         vstvec_q                 <= {CVA6Cfg.XLEN{1'b0}};
         vsscratch_q              <= {CVA6Cfg.XLEN{1'b0}};
         vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
+        vstimecmp_q              <= {CVA6Cfg.XLEN{1'b0}};
         vsiselect_q              <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
@@ -3487,6 +3622,7 @@ module csr_regfile
       if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
       miselect_q      <= miselect_d;
       fiom_q          <= fiom_d;
+      mstce_q         <= mstce_d;
       dcache_q        <= dcache_d;
       icache_q        <= icache_d;
       mcountinhibit_q <= mcountinhibit_d;
@@ -3501,6 +3637,7 @@ module csr_regfile
         scounteren_q <= scounteren_d;
         sscratch_q   <= sscratch_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
+        if (CVA6Cfg.RVSSTC) stimecmp_q <= stimecmp_d;
         siselect_q   <= siselect_d;
         satp_q <= satp_d;
         for(int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
@@ -3523,8 +3660,9 @@ module csr_regfile
         hspmpswitchh_q           <= hspmpswitchh_d;
         hcounteren_q             <= hcounteren_d;
         htval_q                  <= htval_d;
+        htimedelta_q             <= htimedelta_d;
+        hstce_q                  <= hstce_d;
         htinst_q                 <= htinst_d;
-        hvip_vseip_q             <= hvip_vseip_d;
         // virtual supervisor mode registers
         vsstatus_q               <= vsstatus_d;
         vsepc_q                  <= vsepc_d;
@@ -3532,6 +3670,7 @@ module csr_regfile
         vstvec_q                 <= vstvec_d;
         vsscratch_q              <= vsscratch_d;
         vstval_q                 <= vstval_d;
+        if (CVA6Cfg.RVSSTC) vstimecmp_q <= vstimecmp_d;
         vsiselect_q              <= vsiselect_d;
         vsatp_q                  <= vsatp_d;
         en_ld_st_g_translation_q <= en_ld_st_g_translation_d;

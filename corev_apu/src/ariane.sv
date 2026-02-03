@@ -57,6 +57,7 @@ module ariane import ariane_pkg::*; #(
   // Interrupt inputs
   input  logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,      // IRQ lines (async)
   input  logic                         ipi_i,        // inter-processor interrupts (async)
+  input  logic [63:0]                  timer_i,      // timer counter
   // Timer facilities
   input  logic                         time_irq_i,   // timer interrupt in (async)
   input  logic                         debug_req_i,  // debug request (async)
@@ -103,6 +104,7 @@ module ariane import ariane_pkg::*; #(
     .imsic_csr_o          ( imsic_csr_o               ),
     .irq_i                ( irq_i                     ),
     .ipi_i                ( ipi_i                     ),
+    .timer_i              ( timer_i                   ),
     .time_irq_i           ( time_irq_i                ),
     .debug_req_i          ( debug_req_i               ),
     .rvfi_probes_o        ( rvfi_probes_o             ),

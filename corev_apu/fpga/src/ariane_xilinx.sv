@@ -253,6 +253,7 @@ logic ndmreset_n;
 logic debug_req_irq;
 logic timer_irq;
 logic ipi;
+logic [63:0] timer;
 
 logic clk;
 logic eth_clk;
@@ -772,6 +773,7 @@ ariane #(
     .imsic_csr_o  ( aia_csr_hart2imsic  ),
     .irq_i        ( irq                 ),
     .ipi_i        ( ipi                 ),
+    .timer_i      ( timer               ),
     .time_irq_i   ( timer_irq           ),
     .rvfi_probes_o( /* open */          ),
     .debug_req_i  ( debug_req_irq       ),
@@ -813,7 +815,8 @@ clint #(
     .axi_resp_o  ( axi_clint_resp ),
     .rtc_i       ( rtc            ),
     .timer_irq_o ( timer_irq      ),
-    .ipi_o       ( ipi            )
+    .ipi_o       ( ipi            ),
+    .timer_o     ( timer          )
 );
 
 `AXI_ASSIGN_TO_REQ(axi_clint_req, master[ariane_soc::CLINT])

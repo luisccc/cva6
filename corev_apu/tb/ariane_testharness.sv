@@ -546,6 +546,7 @@ module ariane_testharness #(
   // ---------------
   logic ipi;
   logic timer_irq;
+  logic [63:0] timer;
 
   ariane_axi_soc::req_slv_t  axi_clint_req;
   ariane_axi_soc::resp_slv_t axi_clint_resp;
@@ -566,7 +567,8 @@ module ariane_testharness #(
     .axi_resp_o  ( axi_clint_resp ),
     .rtc_i       ( rtc_i          ),
     .timer_irq_o ( timer_irq      ),
-    .ipi_o       ( ipi            )
+    .ipi_o       ( ipi            ),
+    .timer_o     ( timer          )
   );
 
   `AXI_ASSIGN_TO_REQ(axi_clint_req, master[ariane_soc::CLINT])
@@ -653,6 +655,7 @@ module ariane_testharness #(
     .imsic_csr_o          ( aia_csr_hart2imsic  ),
     .irq_i                ( irqs                ),
     .ipi_i                ( ipi                 ),
+    .timer_i              ( timer               ),
     .time_irq_i           ( timer_irq           ),
     .rvfi_probes_o        ( rvfi_probes         ),
 // Disable Debug when simulating with Spike

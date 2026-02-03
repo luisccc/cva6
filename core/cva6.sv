@@ -312,6 +312,8 @@ module cva6
     input  logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,
     // Inter-processor (async) interrupt - SUBSYSTEM
     input logic ipi_i,
+    // RTC Timer - SUBSYSTEM
+    input  logic [63:0] timer_i,
     // Timer (async) interrupt - SUBSYSTEM
     input logic time_irq_i,
     // Debug (async) request - SUBSYSTEM
@@ -562,6 +564,8 @@ module cva6
   logic tsr_csr_id;
   logic hu;
   irq_ctrl_t irq_ctrl_csr_id;
+  logic vs_timer_irq;
+  logic vs_ext_irq;
   logic dcache_en_csr_nbdcache;
   logic csr_write_fflags_commit_cs;
   logic icache_en_csr;
@@ -722,6 +726,8 @@ module cva6
       .vs_i              (vs),
       .irq_i             (irq_i),
       .irq_ctrl_i        (irq_ctrl_csr_id),
+      .vs_timer_irq_i    (vs_timer_irq),
+      .vs_ext_irq_i      (vs_ext_irq),
       .debug_mode_i      (debug_mode),
       .tvm_i             (tvm_csr_id),
       .tw_i              (tw_csr_id),
@@ -1147,6 +1153,8 @@ module cva6
       .fprec_o                 (fprec_csr_ex),
       .vs_o                    (vs),
       .irq_ctrl_o              (irq_ctrl_csr_id),
+      .vs_timer_irq_o          (vs_timer_irq),
+      .vs_ext_irq_o            (vs_ext_irq),
       .mtopi_i                 (mtopi),
       .stopi_i                 (stopi),
       .vstopi_i                (vstopi),
@@ -1171,6 +1179,7 @@ module cva6
       .vmid_o                  (vmid_csr_ex),
       .irq_i,
       .ipi_i,
+      .timer_i,
       .debug_req_i,
       .set_debug_pc_o          (set_debug_pc),
       .tvm_o                   (tvm_csr_id),

@@ -56,6 +56,10 @@ module decoder
     input logic [CVA6Cfg.NrIntpFiles-1:0] irq_i,
     // Interrupt control status - CSR_REGFILE
     input irq_ctrl_t irq_ctrl_i,
+    // VS-mode timer interrupt - CSR_REGFILE
+    input logic vs_timer_irq_i,
+    // VS-mode external interrupt - CSR_REGFILE
+    input logic vs_ext_irq_i,
     // Current privilege level - CSR_REGFILE
     input riscv::priv_lvl_t priv_lvl_i,
     // Current virtualization mode - CSR_REGFILE
@@ -1618,7 +1622,7 @@ module decoder
       // for two privilege levels: Supervisor and Machine Mode
       // Virtual Supervisor Timer Interrupt
       if (CVA6Cfg.RVH) begin
-        if (irq_ctrl_i.mie[riscv::IRQ_VS_TIMER] && irq_ctrl_i.mip[riscv::IRQ_VS_TIMER]) begin
+        if (irq_ctrl_i.mie[riscv::IRQ_VS_TIMER] && (irq_ctrl_i.mip[riscv::IRQ_VS_TIMER] || vs_timer_irq_i)) begin
           interrupt_cause = INTERRUPTS.VS_TIMER;
           vs_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_TIMER);
           s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_TIMER);
@@ -1630,7 +1634,7 @@ module decoder
           s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_SOFT);
         end
         // Virtual Supervisor External Interrupt
-        if (irq_ctrl_i.mie[riscv::IRQ_VS_EXT] && (irq_ctrl_i.mip[riscv::IRQ_VS_EXT])) begin
+        if (irq_ctrl_i.mie[riscv::IRQ_VS_EXT] && (irq_ctrl_i.mip[riscv::IRQ_VS_EXT] || vs_ext_irq_i)) begin
           interrupt_cause = INTERRUPTS.VS_EXT;
           vs_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_EXT);
           s_interrupt_topi = CVA6Cfg.XLEN'(riscv::IRQ_VS_EXT);
