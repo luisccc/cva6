@@ -44,7 +44,13 @@ package build_config_pkg;
     cfg.NWorlds    = 8;
     cfg.PMWID      = 1;
     cfg.PMWIDLIST  = '1;
-    cfg.PMLWIDLIST = '1;   
+    cfg.PMLWIDLIST = '1;
+
+    cfg.SMWID      = 1;
+    cfg.SMLWID     = 1;
+    cfg.SMLWIDLIST = 1;
+    cfg.SMWDELEG   = 1;
+    cfg.SSWID      = 1; 
 
     cfg.FpgaEn = CVA6Cfg.FpgaEn;
     cfg.FpgaAlteraEn = CVA6Cfg.FpgaAlteraEn;

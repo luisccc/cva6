@@ -970,26 +970,25 @@ module csr_regfile
         end
 
         // Worlds
-        // TODO: Only if the extension is enabled we can read the CSR
         riscv::CSR_MWID: begin
-          csr_rdata = mwid_q;
+          if (CVA6Cfg.SMWID) csr_rdata = mwid_q;
+          else read_access_exception = 1'b1;
         end
         riscv::CSR_MLWID: begin
-          if (CVA6Cfg.RVU) csr_rdata = mlwid_q;
+          if (CVA6Cfg.RVU && CVA6Cfg.SMLWID) csr_rdata = mlwid_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MLWIDLIST: begin
-          if (CVA6Cfg.RVU) csr_rdata = mlwidlist_q;
+          if (CVA6Cfg.RVU && CVA6Cfg.SMLWIDLIST) csr_rdata = mlwidlist_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin
-          if (CVA6Cfg.RVS) csr_rdata = mwiddeleg_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.SMWDELEG) csr_rdata = mwiddeleg_q;
           else read_access_exception = 1'b1;
         end
         riscv::CSR_SLWID: begin
           // We have to have S Mode and mwiddeleg different than 0
-          // TODO: Change to verify extension
-          if (CVA6Cfg.RVS && mwiddeleg_q != 0) csr_rdata = slwid_q;
+          if (CVA6Cfg.RVS && CVA6Cfg.SSWID && mwiddeleg_q != 0) csr_rdata = slwid_q;
           else read_access_exception = 1'b1;
         end
         default: read_access_exception = 1'b1;
@@ -1132,16 +1131,26 @@ module csr_regfile
     pmpaddr_d              = pmpaddr_q;
 
     // Worlds
-    // TODO: Add extension verification
-    mwid_d = mwid_q;
+    if (CVA6Cfg.SMWID) begin
+      mwid_d = mwid_q;
+    end
 
     if (CVA6Cfg.RVU) begin
-      mlwid_d = mlwid_q;
-      mlwidlist_d = mlwidlist_q;
+      if (CVA6Cfg.SMLWID) begin
+        mlwid_d = mlwid_q;  
+      end
+      if (CVA6Cfg.SMLWIDLIST) begin
+        mlwidlist_d = mlwidlist_q;
+      end
     end
+
     if (CVA6Cfg.RVS) begin
-      slwid_d = slwid_q;
-      mwiddeleg_d = mwiddeleg_q;
+      if (CVA6Cfg.SSWID) begin
+        slwid_d = slwid_q;  
+      end
+      if (CVA6Cfg.SMWDELEG) begin
+        mwiddeleg_d = mwiddeleg_q;
+      end
     end
 
     mcbie_d                = mcbie_q;
@@ -2923,15 +2932,26 @@ module csr_regfile
       end
 
       // Worlds
-      mwid_q <= CVA6Cfg.PMWID;
+      if (CVA6Cfg.SMWID) begin
+        mwid_q <= CVA6Cfg.PMWID;
+      end
 
       if (CVA6Cfg.RVU) begin
-        mlwid_q <= '0;
-        mlwidlist_q <= CVA6Cfg.PMLWIDLIST;
+        if (CVA6Cfg.SMWID) begin
+          mlwid_q <= '0;
+        end
+        if (CVA6Cfg.SMLWIDLIST) begin
+          mlwidlist_q <= CVA6Cfg.PMLWIDLIST;
+        end
       end
+
       if (CVA6Cfg.RVS) begin
-        slwid_q <= '0;
-        mwiddeleg_q <= '0;
+        if (CVA6Cfg.SSWID) begin
+          slwid_q <= '0;
+        end
+        if (CVA6Cfg.SSWID) begin
+          mwiddeleg_q <= '0;
+        end
       end
 
     end else begin
@@ -3025,16 +3045,28 @@ module csr_regfile
       // pmp
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
+      
       // Worlds
-      mwid_q  <= mwid_d;
+      if (CVA6Cfg.SMWID) begin
+        mwid_q  <= mwid_d;
+      end
 
       if (CVA6Cfg.RVU) begin
-        mlwid_q <= mlwid_d;
-        mlwidlist_q <= mlwidlist_d;
+        if (CVA6Cfg.SMLWID) begin
+          mlwid_q <= mlwid_d;
+        end
+        if (CVA6Cfg.SMLWIDLIST) begin
+          mlwidlist_q <= mlwidlist_d;
+        end
       end
+
       if (CVA6Cfg.RVS) begin
-        slwid_q <= slwid_d;
-        mwiddeleg_q <= mwiddeleg_d & CVA6Cfg.PMLWIDLIST & mlwidlist_q;
+        if (CVA6Cfg.SSWID) begin
+          slwid_q <= slwid_d;
+        end
+        if (CVA6Cfg.SMWDELEG) begin
+          mwiddeleg_q <= mwiddeleg_d & CVA6Cfg.PMLWIDLIST & mlwidlist_q;
+        end
       end
     end
   end

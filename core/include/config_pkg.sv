@@ -276,6 +276,12 @@ package config_pkg;
     int unsigned ASID_WIDTH;
     int unsigned VMID_WIDTH;
 
+    bit SMWID;
+    bit SMLWID;
+    bit SMLWIDLIST;
+    bit SMWDELEG;
+    bit SSWID;
+
     int unsigned NWorlds;
     int unsigned PMWID;
     int unsigned PMWIDLIST;
