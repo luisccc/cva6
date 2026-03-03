@@ -276,6 +276,11 @@ package config_pkg;
     int unsigned ASID_WIDTH;
     int unsigned VMID_WIDTH;
 
+    int unsigned NWorlds;
+    int unsigned PMWID;
+    int unsigned PMWIDLIST;
+    int unsigned PMLWIDLIST;    
+
     bit FpgaEn;
     bit FpgaAlteraEn;
     bit TechnoCut;

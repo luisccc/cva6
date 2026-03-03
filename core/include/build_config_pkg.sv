@@ -40,6 +40,11 @@ package build_config_pkg;
     cfg.XLEN_ALIGN_BYTES = $clog2(CVA6Cfg.XLEN / 8);
     cfg.ASID_WIDTH = (CVA6Cfg.XLEN == 64) ? 16 : 1;
     cfg.VMID_WIDTH = (CVA6Cfg.XLEN == 64) ? 14 : 1;
+    // TODO: Make it depend on user config
+    cfg.NWorlds    = 8;
+    cfg.PMWID      = 1;
+    cfg.PMWIDLIST  = '1;
+    cfg.PMLWIDLIST = '1;   
 
     cfg.FpgaEn = CVA6Cfg.FpgaEn;
     cfg.FpgaAlteraEn = CVA6Cfg.FpgaAlteraEn;

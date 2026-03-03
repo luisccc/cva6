@@ -294,6 +294,17 @@ module csr_regfile
 
   logic wfi_d, wfi_q;
 
+  // Worlds CSRs
+  // Smwid
+  logic [CVA6Cfg.XLEN-1:0] mwid_q, mwid_d;
+  // Smlwid
+  logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
+  // Smlwidlist
+  logic [CVA6Cfg.NWorlds-1:0] mlwidlist_q, mlwidlist_d;
+  // Smwdeleg / Sswid
+  logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
+  logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;
+
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
 
@@ -957,6 +968,30 @@ module csr_regfile
             csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b1};
           else csr_rdata = {pmpaddr_q[index][CVA6Cfg.PLEN-3:1], 1'b0};
         end
+
+        // Worlds
+        // TODO: Only if the extension is enabled we can read the CSR
+        riscv::CSR_MWID: begin
+          csr_rdata = mwid_q;
+        end
+        riscv::CSR_MLWID: begin
+          if (CVA6Cfg.RVU) csr_rdata = mlwid_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MLWIDLIST: begin
+          if (CVA6Cfg.RVU) csr_rdata = mlwidlist_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEG: begin
+          if (CVA6Cfg.RVS) csr_rdata = mwiddeleg_q;
+          else read_access_exception = 1'b1;
+        end
+        riscv::CSR_SLWID: begin
+          // We have to have S Mode and mwiddeleg different than 0
+          // TODO: Change to verify extension
+          if (CVA6Cfg.RVS && mwiddeleg_q != 0) csr_rdata = slwid_q;
+          else read_access_exception = 1'b1;
+        end
         default: read_access_exception = 1'b1;
       endcase
     end
@@ -1095,6 +1130,19 @@ module csr_regfile
 
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
+
+    // Worlds
+    // TODO: Add extension verification
+    mwid_d = mwid_q;
+
+    if (CVA6Cfg.RVU) begin
+      mlwid_d = mlwid_q;
+      mlwidlist_d = mlwidlist_q;
+    end
+    if (CVA6Cfg.RVS) begin
+      slwid_d = slwid_q;
+      mwiddeleg_d = mwiddeleg_q;
+    end
 
     mcbie_d                = mcbie_q;
     scbie_d                = scbie_q;
@@ -1934,6 +1982,30 @@ module csr_regfile
             pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
           end
         end
+
+        // Worlds
+        riscv::CSR_MWID: begin
+          // Check for the lock
+          if (!mwid_q[CVA6Cfg.XLEN - 1]) mwid_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MLWID: begin
+          if (CVA6Cfg.RVU) mlwid_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MLWIDLIST: begin
+          if (!mwid_q[CVA6Cfg.XLEN - 1]) mlwidlist_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_MWIDDELEG: begin
+          if (CVA6Cfg.RVS) mwiddeleg_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+        riscv::CSR_SLWID: begin
+          if (CVA6Cfg.RVS) slwid_d = csr_wdata;
+          else update_access_exception = 1'b1;
+        end
+
         default: update_access_exception = 1'b1;
       endcase
     end
@@ -2849,6 +2921,19 @@ module csr_regfile
           pmpaddr_q[i] <= '0;
         end
       end
+
+      // Worlds
+      mwid_q <= CVA6Cfg.PMWID;
+
+      if (CVA6Cfg.RVU) begin
+        mlwid_q <= '0;
+        mlwidlist_q <= CVA6Cfg.PMLWIDLIST;
+      end
+      if (CVA6Cfg.RVS) begin
+        slwid_q <= '0;
+        mwiddeleg_q <= '0;
+      end
+
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -2940,6 +3025,17 @@ module csr_regfile
       // pmp
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
+      // Worlds
+      mwid_q  <= mwid_d;
+
+      if (CVA6Cfg.RVU) begin
+        mlwid_q <= mlwid_d;
+        mlwidlist_q <= mlwidlist_d;
+      end
+      if (CVA6Cfg.RVS) begin
+        slwid_q <= slwid_d;
+        mwiddeleg_q <= mwiddeleg_d & CVA6Cfg.PMLWIDLIST & mlwidlist_q;
+      end
     end
   end
 
