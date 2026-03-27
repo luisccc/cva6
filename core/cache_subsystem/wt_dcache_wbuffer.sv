@@ -79,6 +79,7 @@ module wt_dcache_wbuffer
     output logic miss_nc_o,  // request to I/O space
     output logic [2:0] miss_size_o,  //
     output logic [CVA6Cfg.MEM_TID_WIDTH-1:0]          miss_id_o,       // ID of this transaction (wbuffer uses all IDs from 0 to DCACHE_MAX_TX-1)
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0]        miss_wid_o,      // World ID
     // write responses from memory
     input logic miss_rtrn_vld_i,
     input logic [CVA6Cfg.MEM_TID_WIDTH-1:0] miss_rtrn_id_i,  // transaction ID to clear
@@ -258,6 +259,7 @@ module wt_dcache_wbuffer
   // add the offset to the physical base address of this buffer entry
   assign miss_paddr_o = {wbuffer_dirty_mux.wtag, bdirty_off};
   assign miss_id_o = tx_id;
+  assign miss_wid_o = wbuffer_dirty_mux.wid;
 
   // is there any dirty word to be transmitted, and is there a free TX slot?
   assign miss_req_o = (|dirty) && free_tx_slots;
@@ -585,6 +587,7 @@ module wt_dcache_wbuffer
           req_port_i.address_tag,
           req_port_i.address_index[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.XLEN_ALIGN_BYTES]
         };
+        wbuffer_d[wr_ptr].wid = req_port_i.wid;
 
         // mark bytes as dirty
         for (int k = 0; k < (CVA6Cfg.XLEN / 8); k++) begin

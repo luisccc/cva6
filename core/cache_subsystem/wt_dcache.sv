@@ -67,6 +67,7 @@ module wt_dcache
     logic [(CVA6Cfg.XLEN/8)-1:0] txblock;  // byte is part of transaction in-flight
     logic checked;  // if cache state of this word has been checked
     logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] hit_oh;  // valid way in the cache
+    logic [$clog2(CVA6Cfg.NWorlds) - 1:0] wid; 
   };
 
   // miss unit <-> read controllers
@@ -104,6 +105,7 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  miss_replay;
   logic     [                      NumPorts-1:0]                                  miss_rtrn_vld;
   logic     [         CVA6Cfg.MEM_TID_WIDTH-1:0]                                  miss_rtrn_id;
+  logic     [                      NumPorts-1:0][    $clog2(CVA6Cfg.NWorlds)-1:0] miss_wid;
 
   // memory <-> read controllers/miss unit
   logic     [                      NumPorts-1:0]                                  rd_prio;
@@ -161,6 +163,7 @@ module wt_dcache
       .miss_vld_bits_i(miss_vld_bits_o),
       .miss_size_i    (miss_size),
       .miss_id_i      (miss_id),
+      .miss_wid_i     (miss_wid),
       .miss_replay_o  (miss_replay),
       .miss_rtrn_vld_o(miss_rtrn_vld),
       .miss_rtrn_id_o (miss_rtrn_id),
@@ -219,6 +222,7 @@ module wt_dcache
           .miss_nc_o      (miss_nc[k]),
           .miss_size_o    (miss_size[k]),
           .miss_id_o      (miss_id[k]),
+          .miss_wid_o     (miss_wid[k]),
           .miss_replay_i  (miss_replay[k]),
           .miss_rtrn_vld_i(miss_rtrn_vld[k]),
           // used to detect readout mux collisions
@@ -241,6 +245,7 @@ module wt_dcache
       assign miss_req[k] = 1'b0;
       assign miss_we[k] = 1'b0;
       assign miss_wdata[k] = {{CVA6Cfg.XLEN} {1'b0}};
+      assign miss_wid[k] = {{$clog2(CVA6Cfg.NWorlds)} {1'b0}};
       assign miss_wuser[k] = {{CVA6Cfg.DCACHE_USER_WIDTH} {1'b0}};
       assign miss_vld_bits_o[k] = {{CVA6Cfg.DCACHE_SET_ASSOC} {1'b0}};
       assign miss_paddr[k] = {{CVA6Cfg.PLEN} {1'b0}};
@@ -290,6 +295,7 @@ module wt_dcache
       .miss_nc_o      (miss_nc[NumPorts-1]),
       .miss_size_o    (miss_size[NumPorts-1]),
       .miss_id_o      (miss_id[NumPorts-1]),
+      .miss_wid_o     (miss_wid[NumPorts-1]),
       .miss_rtrn_vld_i(miss_rtrn_vld[NumPorts-1]),
       .miss_rtrn_id_i (miss_rtrn_id),
       // cache read interface

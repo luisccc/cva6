@@ -59,6 +59,7 @@ module cva6
     localparam type icache_arsp_t = struct packed {
       logic                    fetch_req;    // address translation request
       logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;  // virtual address out
+      logic [$clog2(CVA6Cfg.NWorlds)-1:0] fetch_wid;
     },
 
     // I$ data requests
@@ -68,6 +69,7 @@ module cva6
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
       logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
+      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
     },
     localparam type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
@@ -164,6 +166,7 @@ module cva6
       fu_t                              fu;
       fu_op                             operation;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
+      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
     },
 
 
@@ -211,6 +214,7 @@ module cva6
       logic                                  kill_req;
       logic                                  tag_valid;
       cbo_t                                  cbo_op;
+      logic [$clog2(CVA6Cfg.NWorlds)-1:0]    wid;
     },
 
     localparam type dcache_req_o_t = struct packed {
@@ -564,6 +568,7 @@ module cva6
   logic en_ld_st_g_translation_csr_ex;
   riscv::priv_lvl_t ld_st_priv_lvl_csr_ex;
   logic ld_st_v_csr_ex;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_ex;
   logic sum_csr_ex;
   logic vs_sum_csr_ex;
   logic mxr_csr_ex;
@@ -1079,6 +1084,7 @@ module cva6
       .v_i                     (v),                              // from CSR
       .ld_st_priv_lvl_i        (ld_st_priv_lvl_csr_ex),          // from CSR
       .ld_st_v_i               (ld_st_v_csr_ex),                 // from CSR
+      .ld_st_wid_i             (ld_st_wid_ex),                   // from CSR
       .sum_i                   (sum_csr_ex),                     // from CSR
       .vs_sum_i                (vs_sum_csr_ex),                  // from CSR
       .mxr_i                   (mxr_csr_ex),                     // from CSR
@@ -1208,6 +1214,7 @@ module cva6
       .en_ld_st_g_translation_o(en_ld_st_g_translation_csr_ex),
       .ld_st_priv_lvl_o        (ld_st_priv_lvl_csr_ex),
       .ld_st_v_o               (ld_st_v_csr_ex),
+      .ld_st_wid_o             (ld_st_wid_ex),
       .csr_hs_ld_st_inst_i     (csr_hs_ld_st_inst_ex),
       .sum_o                   (sum_csr_ex),
       .vs_sum_o                (vs_sum_csr_ex),

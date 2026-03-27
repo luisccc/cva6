@@ -210,6 +210,7 @@ module load_unit
   assign req_port_o.address_tag   = paddr_i[CVA6Cfg.DCACHE_TAG_WIDTH     +
                                               CVA6Cfg.DCACHE_INDEX_WIDTH-1 :
                                               CVA6Cfg.DCACHE_INDEX_WIDTH];
+  assign req_port_o.wid = lsu_ctrl_i.wid;
   // request id = index of the load buffer's entry
   assign req_port_o.data_id = ldbuf_windex;
   // user field not used

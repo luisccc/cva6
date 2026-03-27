@@ -137,6 +137,7 @@ module store_unit
   logic [CVA6Cfg.XLEN-1:0] st_data_n, st_data_q;
   logic [(CVA6Cfg.XLEN/8)-1:0] st_be_n, st_be_q;
   logic [1:0] st_data_size_n, st_data_size_q;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] st_wid_n, st_wid_q;
   amo_t amo_op_d, amo_op_q;
   cbo_t cbo_op_d, cbo_op_q;
 
@@ -278,6 +279,7 @@ module store_unit
     st_data_n = ((CVA6Cfg.RVA && instr_is_amo) ? endian_data[CVA6Cfg.XLEN-1:0] :
                  data_align(lsu_ctrl_i.vaddr[2:0], {{64 - CVA6Cfg.XLEN{1'b0}}, endian_data}));
     st_data_size_n = extract_transfer_size(lsu_ctrl_i.operation);
+    st_wid_n = lsu_ctrl_i.wid;
     // save AMO op for next cycle
     if (CVA6Cfg.RVA) begin
       case (lsu_ctrl_i.operation)
@@ -349,6 +351,7 @@ module store_unit
       .paddr_i,
       .rvfi_mem_paddr_o     (rvfi_mem_paddr_o),
       .data_i               (st_data_q),
+      .wid_i                (st_wid_q),
       .cbo_op_i             (cbo_op_q),
       .be_i                 (st_be_q),
       .data_size_i          (st_data_size_q),
@@ -387,6 +390,7 @@ module store_unit
       state_q        <= IDLE;
       st_be_q        <= '0;
       st_data_q      <= '0;
+      st_wid_q       <= '0;
       st_data_size_q <= '0;
       trans_id_q     <= '0;
       amo_op_q       <= AMO_NONE;
@@ -395,6 +399,7 @@ module store_unit
       state_q        <= state_d;
       st_be_q        <= st_be_n;
       st_data_q      <= st_data_n;
+      st_wid_q       <= st_wid_n;
       trans_id_q     <= trans_id_n;
       st_data_size_q <= st_data_size_n;
       amo_op_q       <= amo_op_d;

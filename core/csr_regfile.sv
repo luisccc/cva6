@@ -106,6 +106,8 @@ module csr_regfile
     output riscv::priv_lvl_t ld_st_priv_lvl_o,
     // Virtualization mode at which load and stores should happen - EX_STAGE
     output logic ld_st_v_o,
+    // World ID
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_o,
     // Current instruction is a Hypervisor Load/Store Instruction - EX_STAGE
     input logic csr_hs_ld_st_inst_i,
     // Supervisor User Memory - EX_STAGE
@@ -193,6 +195,26 @@ module csr_regfile
     input logic [CVA6Cfg.XLEN-1:0] store_result_i,
     output logic break_from_trigger_o
 );
+
+  function automatic logic [$clog2(CVA6Cfg.NWorlds)-1:0] get_world_id (
+    input riscv::priv_lvl_t priv_lvl,
+    input logic v
+  );
+    get_world_id = CVA6Cfg.PMWID;
+
+    if (CVA6Cfg.SMWID) begin
+      get_world_id = mwid_q;
+    end
+
+    if (CVA6Cfg.SMLWID && CVA6Cfg.RVU && priv_lvl != riscv::PRIV_LVL_M) begin
+      get_world_id = mlwid_q;
+
+      // If we are in U-Mode or in virtual
+      if(CVA6Cfg.SSWID && mwiddeleg_q != 0 && CVA6Cfg.RVS &&
+          (priv_lvl == riscv::PRIV_LVL_U || v))
+        get_world_id = slwid_q;
+    end
+  endfunction : get_world_id
 
   localparam logic [63:0] SMODE_STATUS_READ_MASK = ariane_pkg::smode_status_read_mask(CVA6Cfg);
   localparam logic [63:0] HS_DELEG_INTERRUPTS = {
@@ -2747,6 +2769,8 @@ module csr_regfile
   // in debug mode we execute with privilege level M
   assign priv_lvl_o = (CVA6Cfg.DebugEn && debug_mode_q) ? riscv::PRIV_LVL_M : priv_lvl_q;
   assign v_o = CVA6Cfg.RVH ? v_q : 1'b0;
+  // WID assignment
+  assign ld_st_wid_o = get_world_id(ld_st_priv_lvl_o, ld_st_v_o);
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
   assign frm_o = fcsr_q.frm;
