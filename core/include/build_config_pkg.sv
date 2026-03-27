@@ -41,6 +41,7 @@ package build_config_pkg;
     cfg.ASID_WIDTH = (CVA6Cfg.XLEN == 64) ? 16 : 1;
     cfg.VMID_WIDTH = (CVA6Cfg.XLEN == 64) ? 14 : 1;
     // TODO: Make it depend on user config
+    cfg.RVWorldsEn = 1;
     cfg.NWorlds    = 8;
     cfg.PMWID      = 1;
     cfg.PMWIDLIST  = '1;

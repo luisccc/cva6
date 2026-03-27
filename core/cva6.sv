@@ -581,6 +581,8 @@ module cva6
   logic [CVA6Cfg.ASID_WIDTH-1:0] vs_asid_csr_ex;
   logic [CVA6Cfg.PPNW-1:0] hgatp_ppn_csr_ex;
   logic [CVA6Cfg.VMID_WIDTH-1:0] vmid_csr_ex;
+  logic ld_st_world_sw_csr_ex;
+  logic inst_world_sw_csr_ex;
   logic [11:0] csr_addr_ex_csr;
   fu_op csr_op_commit_csr;
   logic [CVA6Cfg.XLEN-1:0] csr_wdata_commit_csr;
@@ -1181,6 +1183,8 @@ module cva6
       .rst_ni,
       .time_irq_i,
       .flush_o                 (flush_csr_ctrl),
+      .ld_st_world_sw_o        (ld_st_world_sw_csr_ex),
+      .inst_world_sw_o         (inst_world_sw_csr_ex),
       .halt_csr_o              (halt_csr_ctrl),
       .commit_instr_i          (commit_instr_id_commit[0]),
       .commit_ack_i            (commit_ack),
@@ -1356,7 +1360,9 @@ module cva6
       .hfence_vvma_i         (hfence_vvma_commit_controller),
       .hfence_gvma_i         (hfence_gvma_commit_controller),
       .flush_commit_i        (flush_commit),
-      .flush_acc_i           (flush_acc)
+      .flush_acc_i           (flush_acc),
+      .ld_st_world_sw_i      (ld_st_world_sw_csr_ex),
+      .inst_world_sw_i       (inst_world_sw_csr_ex)
   );
 
   // -------------------

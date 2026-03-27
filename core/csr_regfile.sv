@@ -34,6 +34,10 @@ module csr_regfile
     input logic time_irq_i,
     // send a flush request out when a CSR with a side effect changes - CONTROLLER
     output logic flush_o,
+    // send signal signaling a world switch load/store - CONTROLLER
+    output logic ld_st_world_sw_o,
+    // send signal signaling a world switch instruction - CONTROLLER
+    output logic inst_world_sw_o,
     // halt requested - CONTROLLER
     output logic halt_csr_o,
     // Instruction to be committed - ID_STAGE
@@ -350,6 +354,10 @@ module csr_regfile
   logic break_from_trigger;
   logic debug_from_trigger;
   logic debug_from_mcontrol;
+
+  // RV Worlds
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_q;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_q;
 
   // CBO enable flags from menvcfg/senvcfg/henvcfg
   riscv::cbie_t mcbie_q, mcbie_d, scbie_q, scbie_d, hcbie_q, hcbie_d;
@@ -1154,6 +1162,9 @@ module csr_regfile
     pmpaddr_d              = pmpaddr_q;
 
     // Worlds
+    ld_st_wid_q <= CVA6Cfg.PMWID;
+    instr_wid_q <= CVA6Cfg.PMWID;
+
     if (CVA6Cfg.SMWID) begin
       mwid_d = mwid_q;
     end
@@ -2773,6 +2784,13 @@ module csr_regfile
   // WID assignment
   assign ld_st_wid_o = get_world_id(ld_st_priv_lvl_o, ld_st_v_o);
   assign instr_wid_o = get_world_id(priv_lvl_o, v_o);
+
+  always_comb begin
+    inst_world_sw_o = instr_wid_o != instr_wid_q ? 1'b1 : 1'b0;
+
+    ld_st_world_sw_o = ld_st_wid_o != ld_st_wid_q ? 1'b1 : 1'b0;
+  end
+
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
   assign frm_o = fcsr_q.frm;
@@ -3073,6 +3091,9 @@ module csr_regfile
       pmpaddr_q              <= pmpaddr_next;
       
       // Worlds
+      ld_st_wid_q <= ld_st_wid_o;
+      instr_wid_q <= instr_wid_o;
+
       if (CVA6Cfg.SMWID) begin
         mwid_q  <= mwid_d;
       end

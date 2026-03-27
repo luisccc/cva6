@@ -276,6 +276,7 @@ package config_pkg;
     int unsigned ASID_WIDTH;
     int unsigned VMID_WIDTH;
 
+    bit RVWorldsEn;
     bit SMWID;
     bit SMLWID;
     bit SMLWIDLIST;

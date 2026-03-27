@@ -80,7 +80,11 @@ module controller
     // Flush request from commit stage - COMMIT_STAGE
     input logic flush_commit_i,
     // Flush request from accelerator - ACC_DISPATCHER
-    input logic flush_acc_i
+    input logic flush_acc_i,
+    // A world switch load/store - CSR_REGFILE
+    input logic ld_st_world_sw_i,
+    // A world switch instruction - CSR_REGFILE
+    input logic inst_world_sw_i
 );
 
   // active fence - high if we are currently flushing the dcache
@@ -88,6 +92,8 @@ module controller
   logic flush_dcache;
   // Added fence_i_active state to track fence.i progress
   logic fence_i_active_d, fence_i_active_q;
+  // Added to track world switch progress
+  logic ld_st_world_sw_active_d, ld_st_world_sw_active_q;
 
   // ------------
   // Flush CTRL
@@ -95,6 +101,7 @@ module controller
   always_comb begin : flush_ctrl
     fence_active_d         = fence_active_q;
     fence_i_active_d       = fence_i_active_q;
+    ld_st_world_sw_active_d = ld_st_world_sw_active_q;
     set_pc_commit_o        = 1'b0;
     flush_if_o             = 1'b0;
     flush_unissued_instr_o = 1'b0;
@@ -156,9 +163,39 @@ module controller
       end
     end
 
+    // ---------------------------------
+    // World Switch
+    // ---------------------------------
+    if (ld_st_world_sw_i) begin
+      set_pc_commit_o        = 1'b1;
+      flush_if_o             = 1'b1;
+      flush_unissued_instr_o = 1'b1;
+      flush_id_o             = 1'b1;
+      flush_ex_o             = 1'b1;
+
+      flush_dcache   = 1'b1;
+      ld_st_world_sw_active_d = 1'b1;
+
+      if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
+      else flush_tlb_o = 1'b1;
+    end
+
+    if (inst_world_sw_i) begin
+      set_pc_commit_o        = 1'b1;
+      flush_if_o             = 1'b1;
+      flush_unissued_instr_o = 1'b1;
+      flush_id_o             = 1'b1;
+      flush_ex_o             = 1'b1;
+
+      flush_icache_o         = 1'b1;
+
+      if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
+      else flush_tlb_o = 1'b1;
+    end
+
     // this is not needed in the case since we
     // have a write-through cache in this case
-    if (CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI) begin
+    if (CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI || CVA6Cfg.RVWorldsEn) begin
       // Wait for the acknowledge here
       // Deassert fence_i state only after DCache flush completes
       if (flush_dcache_ack_i && fence_i_active_q) begin
@@ -166,7 +203,10 @@ module controller
       end
       if (flush_dcache_ack_i && fence_active_q) begin
         fence_active_d = 1'b0;
-        // keep the flush dcache signal high as long as we didn't get the acknowledge from the cache
+      end
+      if (flush_dcache_ack_i && ld_st_world_sw_active_q) begin
+        ld_st_world_sw_active_d = 1'b0;
+      // keep the flush dcache signal high as long as we didn't get the acknowledge from the cache
       end else if (fence_active_q) begin
         flush_dcache = 1'b1;
       end
@@ -254,7 +294,7 @@ module controller
   // ----------------------
   always_comb begin
     // halt the core if the fence is active
-    halt_o = halt_csr_i || halt_acc_i || ((CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI) && fence_active_q);
+    halt_o = halt_csr_i || halt_acc_i || ((CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI) && fence_active_q) || ld_st_world_sw_active_q;
     // Halt frontend during fence.i to synchronize ICache/DCache flushes
     halt_frontend_o = fence_i_active_q;
   end
@@ -266,10 +306,12 @@ module controller
     if (~rst_ni) begin
       fence_active_q   <= 1'b0;
       fence_i_active_q <= 1'b0;
+      ld_st_world_sw_active_q <= 1'b0;
       flush_dcache_o   <= 1'b0;
     end else begin
       fence_active_q   <= fence_active_d;
       fence_i_active_q <= fence_i_active_d;
+      ld_st_world_sw_active_q <= ld_st_world_sw_active_d;
       // register on the flush signal, this signal might be critical
       flush_dcache_o   <= flush_dcache;
     end
