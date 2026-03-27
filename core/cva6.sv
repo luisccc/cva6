@@ -186,6 +186,7 @@ module cva6
       logic [CVA6Cfg.PLEN-1:0] paddr;  // physical address
       logic nc;  // noncacheable
       logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // thread id (used as transaction id in Ariane)
+      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
     },
     localparam type icache_rtrn_t = struct packed {
       wt_cache_pkg::icache_in_t rtype;  // see definitions above
@@ -384,6 +385,7 @@ module cva6
   logic eret;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid;
   logic mbe;  // determines the data endian-ness of the processor
 
   localparam NumPorts = 4;
@@ -709,7 +711,8 @@ module cva6
       .icache_dreq_i      (icache_dreq_cache_if),
       .fetch_entry_o      (fetch_entry_if_id),
       .fetch_entry_valid_o(fetch_valid_if_id),
-      .fetch_entry_ready_i(fetch_ready_id_if)
+      .fetch_entry_ready_i(fetch_ready_id_if),
+      .instr_wid_i        (instr_wid)
   );
 
   // ---------
@@ -1197,6 +1200,7 @@ module cva6
       .eret_o                  (eret),
       .trap_vector_base_o      (trap_vector_base_commit_pcgen),
       .priv_lvl_o              (priv_lvl),
+      .instr_wid_o             (instr_wid),
       .mbe_o                   (mbe),
       .v_o                     (v),
       .acc_fflags_ex_i         (acc_resp_fflags),

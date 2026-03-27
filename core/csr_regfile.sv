@@ -72,6 +72,7 @@ module csr_regfile
     output logic [CVA6Cfg.VLEN-1:0] trap_vector_base_o,
     // Current privilege level the CPU is in - EX_STAGE
     output riscv::priv_lvl_t priv_lvl_o,
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_o,
     // Data Endian mode
     output logic mbe_o,
     // Current virtualization mode state the CPU is in - EX_STAGE
@@ -2771,6 +2772,7 @@ module csr_regfile
   assign v_o = CVA6Cfg.RVH ? v_q : 1'b0;
   // WID assignment
   assign ld_st_wid_o = get_world_id(ld_st_priv_lvl_o, ld_st_v_o);
+  assign instr_wid_o = get_world_id(priv_lvl_o, v_o);
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
   assign frm_o = fcsr_q.frm;

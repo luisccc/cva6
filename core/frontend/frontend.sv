@@ -60,6 +60,8 @@ module frontend
     output icache_dreq_t icache_dreq_o,
     // Handshake between CACHE and FRONTEND (fetch) - CACHES
     input icache_drsp_t icache_dreq_i,
+    // World ID - CSR_REGFILE
+    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_i,
     // Handshake's data between fetch and decode - ID_STAGE
     output fetch_entry_t [CVA6Cfg.NrIssuePorts-1:0] fetch_entry_o,
     // Handshake's valid between fetch and decode - ID_STAGE
@@ -319,6 +321,8 @@ module frontend
   // if we have a valid branch-prediction we need to only kill the last cache request
   // also if we killed the first stage we also need to kill the second stage (inclusive flush)
   assign icache_dreq_o.kill_s2 = icache_dreq_o.kill_s1 | bp_valid;
+  // We need to request to cache already with the WID
+  assign icache_dreq_o.wid = instr_wid_i;
 
   // Update Control Flow Predictions
   bht_update_t bht_update;
