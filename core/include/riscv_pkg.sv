@@ -418,8 +418,8 @@ package riscv;
     CSR_VSTOPEI          = 12'h25C,
     CSR_VSTIMECMPH       = 12'h25D,
     CSR_VSATP            = 12'h280,
-    CSR_VSPMPSWITCH      = 12'hA50,
-    CSR_VSPMPSWITCHH     = 12'hA51,
+    CSR_VSPMPEN          = 12'h283,
+    CSR_VSPMPENH         = 12'h293,
     CSR_VSTOPI           = 12'hEB0,
     // Supervisor Mode CSRs
     CSR_SSTATUS          = 12'h100,
@@ -445,8 +445,8 @@ package riscv;
     CSR_STOPEI           = 12'h15C,
     CSR_STIMECMPH        = 12'h15D,
     CSR_SATP             = 12'h180,
-    CSR_SSPMPSWITCH      = 12'h550,
-    CSR_SSPMPSWITCHH     = 12'h551,
+    CSR_SPMPEN           = 12'h183,
+    CSR_SPMPENH          = 12'h193,
     CSR_STOPI            = 12'hDB0,
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
@@ -459,6 +459,7 @@ package riscv;
     CSR_HVIEN            = 12'h608,
     CSR_HVIENH           = 12'h618,
     CSR_HVICTL           = 12'h609,
+    CSR_HSPMPDELEG       = 12'h616,
     CSR_HTVAL            = 12'h643,
     CSR_HIP              = 12'h644,
     CSR_HVIP             = 12'h645,
@@ -472,9 +473,8 @@ package riscv;
     CSR_HENVCFG          = 12'h60A,
     CSR_HENVCFGH         = 12'h61A,
     CSR_HGATP            = 12'h680,
-    CSR_HSPMPDELEG       = 12'h681,
-    CSR_HSPMPSWITCH      = 12'h682,
-    CSR_HSPMPSWITCHH     = 12'h683,
+    CSR_HSPMPEN          = 12'h683,
+    CSR_HSPMPENH         = 12'h693,
     CSR_HCONTEXT         = 12'h6A8,
     CSR_HTIMEDELTA       = 12'h605,
     CSR_HTIMEDELTAH      = 12'h615,
@@ -493,6 +493,7 @@ package riscv;
     CSR_MVIP             = 12'h309,
     CSR_MVIPH            = 12'h319,
     CSR_MSTATUSH         = 12'h310,
+    CSR_MPMPDELEG        = 12'h316,
     CSR_MCOUNTINHIBIT    = 12'h320,
     CSR_MHPM_EVENT_3     = 12'h323,  //Machine performance monitoring Event Selector
     CSR_MHPM_EVENT_4     = 12'h324,  //Machine performance monitoring Event Selector
@@ -621,7 +622,6 @@ package riscv;
     CSR_PMPADDR61        = 12'h3ED,
     CSR_PMPADDR62        = 12'h3EE,
     CSR_PMPADDR63        = 12'h3EF,
-    CSR_MPMPDELEG        = 12'h3F0,
     CSR_MVENDORID        = 12'hF11,
     CSR_MARCHID          = 12'hF12,
     CSR_MIMPID           = 12'hF13,
@@ -1065,7 +1065,7 @@ package riscv;
     unique case (csr_addr.address) inside
       [CSR_SSTATUS : CSR_STVEC], 
       [CSR_SSCRATCH : CSR_SATP], 
-      [CSR_SSPMPSWITCH : CSR_SSPMPSWITCHH], 
+      [CSR_SPMPEN : CSR_SPMPENH], 
       CSR_STOPI: begin
         if (v) begin
           ret.csr_decode.priv_lvl = PRIV_LVL_HS;

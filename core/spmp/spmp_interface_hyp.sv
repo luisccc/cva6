@@ -58,10 +58,20 @@ module spmp_interface_hyp #(
     input  logic [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
     input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
     input  riscv::spmpcfg_t [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpcfg_i,
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
-    input  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpswitch_i,
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpswitch_i
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpen_i,
+    input  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpen_i,
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpen_i
 );
+
+    localparam int unsigned hSPMPHighIdx =  (CVA6Cfg.NrPMPResource > CVA6Cfg.NrPMPEntries) ?
+                                            (CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries-1) :
+                                            (CVA6Cfg.NrPMPResource-1);
+    localparam int unsigned hSPMPLowIdx =   (CVA6Cfg.NrPMPResource > CVA6Cfg.NrPMPEntries) ?
+                                            (CVA6Cfg.NrPMPEntries) :
+                                            (CVA6Cfg.NrPMPResource-1);
+    localparam int unsigned vSPMPLowIdx =   (CVA6Cfg.NrPMPResource > CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries) ?
+                                            (CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries) :
+                                            (CVA6Cfg.NrPMPResource-1);
 
     //---------
     // IF SPMP
@@ -70,7 +80,7 @@ module spmp_interface_hyp #(
     logic [CVA6Cfg.PLEN-1:0]  if_req_addr;
     logic [CVA6Cfg.XLEN-1:0]  if_ex_addr;
     logic [CVA6Cfg.GPLEN-1:0] if_ex_gpaddr;
-    logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] if_spmpswitch;
+    logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] if_spmpen;
     logic if_spmp_allow, if_vspmp_allow;
 
     always_comb begin : if_spmp
@@ -87,7 +97,7 @@ module spmp_interface_hyp #(
                         (if_req_addr[CVA6Cfg.GPLEN-1:0]):
                         {if_req_addr};
 
-        if_spmpswitch = (v_i) ? (hspmpswitch_i) : (spmpswitch_i);
+        if_spmpen = (v_i) ? (hspmpen_i) : (spmpen_i);
 
         if_req_o.fetch_valid        = if_req_i.fetch_req;
         if_req_o.fetch_paddr        = if_req_addr;
@@ -135,7 +145,7 @@ module spmp_interface_hyp #(
 
     logic [CVA6Cfg.XLEN-1:0]  lsu_ex_addr;
     logic [CVA6Cfg.GPLEN-1:0] lsu_ex_gpaddr;
-    logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] lsu_spmpswitch;
+    logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] lsu_spmpen;
     logic                     lsu_spmp_allow_q, lsu_spmp_allow_d;
     logic                     lsu_vspmp_allow_q, lsu_vspmp_allow_d;
 
@@ -147,7 +157,7 @@ module spmp_interface_hyp #(
         access_type     = (lsu_is_store_i) ? 
                           (riscv::ACCESS_WRITE) : 
                           (riscv::ACCESS_READ);
-        lsu_spmpswitch  = (ld_st_v_i) ? (hspmpswitch_i) : (spmpswitch_i);
+        lsu_spmpen  = (ld_st_v_i) ? (hspmpen_i) : (spmpen_i);
 
         lsu_data_d.addr         = lsu_req_addr;
         lsu_data_d.is_store     = lsu_is_store_i;
@@ -233,10 +243,10 @@ module spmp_interface_hyp #(
         .v_i                (v_i),
         .is_hlvx_inst_i     (1'b0),
         .mmu_enabled_i      (mmu_enabled_i),
-        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries)]),
-        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries)]),
+        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):vSPMPLowIdx]),
+        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):vSPMPLowIdx]),
         .spmpcfg_i          (vspmpcfg_i),
-        .spmpswitch_i       (vspmpswitch_i),
+        .spmpen_i           (vspmpen_i),
         .allow_o            (if_vspmp_allow)
     );
 
@@ -255,10 +265,10 @@ module spmp_interface_hyp #(
         .v_i                (v_i),
         .is_hlvx_inst_i     (1'b0),
         .mmu_enabled_i      (mmu_enabled_i),
-        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries-1):CVA6Cfg.NrPMPEntries]),
-        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries-1):CVA6Cfg.NrPMPEntries]),
+        .pmpcfg_i           (pmpcfg_i[hSPMPHighIdx:hSPMPLowIdx]),
+        .pmpaddr_i          (pmpaddr_i[hSPMPHighIdx:hSPMPLowIdx]),
         .spmpcfg_i          (spmpcfg_i),
-        .spmpswitch_i       (if_spmpswitch),
+        .spmpen_i           (if_spmpen),
         .allow_o            (if_spmp_allow)
     );
         
@@ -277,10 +287,10 @@ module spmp_interface_hyp #(
         .v_i                (ld_st_v_i),
         .is_hlvx_inst_i     (hlvx_inst_i),
         .mmu_enabled_i      (mmu_enabled_i),
-        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries)]),
-        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries)]),
+        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):vSPMPLowIdx]),
+        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):vSPMPLowIdx]),
         .spmpcfg_i          (vspmpcfg_i),
-        .spmpswitch_i       (vspmpswitch_i),
+        .spmpen_i           (vspmpen_i),
         .allow_o            (lsu_vspmp_allow_d)
     );
 
@@ -299,10 +309,10 @@ module spmp_interface_hyp #(
         .v_i                (ld_st_v_i),
         .is_hlvx_inst_i     (hlvx_inst_i),
         .mmu_enabled_i      (mmu_enabled_i),
-        .pmpcfg_i           (pmpcfg_i[(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries-1):CVA6Cfg.NrPMPEntries]),
-        .pmpaddr_i          (pmpaddr_i[(CVA6Cfg.NrSPMPEntries+CVA6Cfg.NrPMPEntries-1):CVA6Cfg.NrPMPEntries]),
+        .pmpcfg_i           (pmpcfg_i[hSPMPHighIdx:hSPMPLowIdx]),
+        .pmpaddr_i          (pmpaddr_i[hSPMPHighIdx:hSPMPLowIdx]),
         .spmpcfg_i          (spmpcfg_i),
-        .spmpswitch_i       (lsu_spmpswitch),
+        .spmpen_i           (lsu_spmpen),
         .allow_o            (lsu_spmp_allow_d)
     );
 

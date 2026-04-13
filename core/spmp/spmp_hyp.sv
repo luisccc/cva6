@@ -56,7 +56,7 @@ module spmp_hyp
     input  riscv::pmpcfg_t [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] pmpcfg_i,
     input  logic [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
     input  riscv::spmpcfg_t [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] spmpcfg_i,
-    input  logic [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] spmpswitch_i,
+    input  logic [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] spmpen_i,
     // Output
     output logic allow_o
 );
@@ -171,7 +171,7 @@ module spmp_hyp
             // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
             for (k = 0; k < NrSPMPEntries; k++) begin
 
-                if (match[k] && (spmpswitch_i[k] || !CVA6Cfg.SPMPSwitchOptEn)) begin
+                if (match[k] && (spmpen_i[k] || !CVA6Cfg.SPMPSwitchOptEn)) begin
 
                     // S-mode only rule
                     if (spmpcfg_i[k].shared) begin

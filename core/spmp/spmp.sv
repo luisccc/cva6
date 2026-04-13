@@ -34,7 +34,7 @@ module spmp
     input  riscv::pmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] pmpcfg_i,
     input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
     input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpen_i,
     // Output
     output logic allow_o
 );
@@ -116,7 +116,7 @@ module spmp
             // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
             for (k = 0; k < CVA6Cfg.NrSPMPEntries; k++) begin
 
-                if (match[k] && (spmpswitch_i[k] || !CVA6Cfg.SPMPSwitchOptEn)) begin
+                if (match[k] && (spmpen_i[k] || !CVA6Cfg.SPMPSwitchOptEn)) begin
 
                     // Shared region
                     if (spmpcfg_i[k].shared) begin

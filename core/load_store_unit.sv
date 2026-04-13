@@ -156,12 +156,12 @@ module load_store_unit
     input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
     // vSPMP configuration
     input  riscv::spmpcfg_t [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpcfg_i,
-    // SPMP switch - CSR_REGFILE
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i,
-    // vSPMP switch - CSR_REGFILE
-    input  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpswitch_i,
-    // hSPMP switch - CSR_REGFILE
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpswitch_i,
+    // SPMP enable mask - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpen_i,
+    // vSPMP enable mask - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpen_i,
+    // hSPMP enable mask - CSR_REGFILE
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpen_i,
 
     // RVFI inforamtion - RVFI
     output lsu_ctrl_t                    rvfi_lsu_ctrl_o,
@@ -378,9 +378,9 @@ module load_store_unit
           .pmpaddr_i        (pmpaddr_i),
           .spmpcfg_i        (spmpcfg_i),
           .vspmpcfg_i       (vspmpcfg_i),
-          .spmpswitch_i     (spmpswitch_i),
-          .vspmpswitch_i    (vspmpswitch_i),
-          .hspmpswitch_i    (hspmpswitch_i)
+          .spmpen_i         (spmpen_i),
+          .vspmpen_i        (vspmpen_i),
+          .hspmpen_i        (hspmpen_i)
         );
       end : gen_double_spmp
 
@@ -419,7 +419,7 @@ module load_store_unit
           .pmpcfg_i         (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
           .spmpcfg_i        (spmpcfg_i),
           .spmpaddr_i       (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
-          .spmpswitch_i     (spmpswitch_i)
+          .spmpen_i         (spmpen_i)
         );
       end : gen_single_spmp
     end : gen_spmp

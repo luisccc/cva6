@@ -51,7 +51,7 @@ module spmp_interface #(
     input  riscv::pmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] pmpcfg_i,
     input  riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
     input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
-    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch_i
+    input  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpen_i
 );
 
     //---------
@@ -173,7 +173,7 @@ module spmp_interface #(
         .pmpcfg_i           (pmpcfg_i),
         .spmpcfg_i          (spmpcfg_i),
         .spmpaddr_i         (spmpaddr_i),
-        .spmpswitch_i       (spmpswitch_i),
+        .spmpen_i           (spmpen_i),
         .allow_o            (if_spmp_allow)
     );
 
@@ -190,7 +190,7 @@ module spmp_interface #(
         .pmpcfg_i           (pmpcfg_i),
         .spmpcfg_i          (spmpcfg_i),
         .spmpaddr_i         (spmpaddr_i),
-        .spmpswitch_i       (spmpswitch_i),
+        .spmpen_i           (spmpen_i),
         .allow_o            (lsu_spmp_allow_d)
     );
 

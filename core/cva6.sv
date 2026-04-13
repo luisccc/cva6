@@ -580,9 +580,9 @@ module cva6
   logic [31:0] mcountinhibit_csr_perf;
   riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg;
   riscv::spmpcfg_t [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpcfg;
-  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpswitch;
-  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpswitch;
-  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpswitch;
+  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpen;
+  logic [(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0] vspmpen;
+  logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] hspmpen;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -1046,9 +1046,9 @@ module cva6
       // SPMP
       .spmpcfg_i               (spmpcfg),
       .vspmpcfg_i              (vspmpcfg),
-      .spmpswitch_i            (spmpswitch),
-      .vspmpswitch_i           (vspmpswitch),
-      .hspmpswitch_i           (hspmpswitch),
+      .spmpen_i                (spmpen),
+      .vspmpen_i               (vspmpen),
+      .hspmpen_i               (hspmpen),
       //RVFI
       .rvfi_lsu_ctrl_o         (rvfi_lsu_ctrl),
       .rvfi_mem_paddr_o        (rvfi_mem_paddr)
@@ -1200,9 +1200,9 @@ module cva6
       .pmpaddr_o               (pmpaddr),
       .spmpcfg_o               (spmpcfg),
       .vspmpcfg_o              (vspmpcfg),
-      .spmpswitch_o            (spmpswitch),
-      .vspmpswitch_o           (vspmpswitch), 
-      .hspmpswitch_o           (hspmpswitch),
+      .spmpen_o                (spmpen),
+      .vspmpen_o               (vspmpen), 
+      .hspmpen_o               (hspmpen),
       .mcountinhibit_o         (mcountinhibit_csr_perf),
       //RVFI
       .rvfi_csr_o              (rvfi_csr)
