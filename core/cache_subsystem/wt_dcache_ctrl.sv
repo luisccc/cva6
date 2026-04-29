@@ -49,6 +49,7 @@ module wt_dcache_ctrl
     output logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_o,  // tag in - comes one cycle later
     output logic [DCACHE_CL_IDX_WIDTH-1:0] rd_idx_o,
     output logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_o,
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] rd_wid_o,  // World ID
     output logic rd_req_o,  // read the word at offset off_i[:3] in all ways
     output logic rd_tag_only_o,  // set to zero here
     input logic rd_ack_i,
@@ -95,6 +96,7 @@ module wt_dcache_ctrl
   assign rd_tag_o = address_tag_d;
   assign rd_idx_o = address_idx_d;
   assign rd_off_o = address_off_d;
+  assign rd_wid_o = wid_d;
 
   assign req_port_o.data_rdata = rd_data_i;
   assign req_port_o.data_ruser = rd_user_i;

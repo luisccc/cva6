@@ -77,6 +77,7 @@ module wt_dcache
   logic                                                                           wr_cl_vld;
   logic                                                                           wr_cl_nc;
   logic     [      CVA6Cfg.DCACHE_SET_ASSOC-1:0]                                  wr_cl_we;
+  logic     [       $clog2(CVA6Cfg.NWorlds)-1:0]                                  wr_cl_wid;
   logic     [      CVA6Cfg.DCACHE_TAG_WIDTH-1:0]                                  wr_cl_tag;
   logic     [           DCACHE_CL_IDX_WIDTH-1:0]                                  wr_cl_idx;
   logic     [   CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0]                                  wr_cl_off;
@@ -113,6 +114,7 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  rd_req;
   logic     [                      NumPorts-1:0]                                  rd_ack;
   logic     [                      NumPorts-1:0][   CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag;
+  logic     [                      NumPorts-1:0][    $clog2(CVA6Cfg.NWorlds)-1:0] rd_wid;
   logic     [                      NumPorts-1:0][        DCACHE_CL_IDX_WIDTH-1:0] rd_idx;
   logic     [                      NumPorts-1:0][CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off;
   logic     [                  CVA6Cfg.XLEN-1:0]                                  rd_data;
@@ -175,6 +177,7 @@ module wt_dcache
       .wr_cl_nc_o     (wr_cl_nc),
       .wr_cl_we_o     (wr_cl_we),
       .wr_cl_tag_o    (wr_cl_tag),
+      .wr_cl_wid_o    (wr_cl_wid),
       .wr_cl_idx_o    (wr_cl_idx),
       .wr_cl_off_o    (wr_cl_off),
       .wr_cl_data_o   (wr_cl_data),
@@ -229,6 +232,7 @@ module wt_dcache
           .wr_cl_vld_i    (wr_cl_vld),
           // cache mem interface
           .rd_tag_o       (rd_tag[k]),
+          .rd_wid_o       (rd_wid[k]),
           .rd_idx_o       (rd_idx[k]),
           .rd_off_o       (rd_off[k]),
           .rd_req_o       (rd_req[k]),
@@ -253,6 +257,7 @@ module wt_dcache
       assign miss_size[k] = 3'b0;
       assign miss_id[k] = {{CVA6Cfg.MEM_TID_WIDTH} {1'b0}};
       assign rd_tag[k] = {{CVA6Cfg.DCACHE_TAG_WIDTH} {1'b0}};
+      assign rd_wid[k] = {{$clog2(CVA6Cfg.NWorlds)} {1'b0}};
       assign rd_idx[k] = {{DCACHE_CL_IDX_WIDTH} {1'b0}};
       assign rd_off[k] = {{CVA6Cfg.DCACHE_OFFSET_WIDTH} {1'b0}};
       assign rd_req[k] = 1'b0;
@@ -300,6 +305,7 @@ module wt_dcache
       .miss_rtrn_id_i (miss_rtrn_id),
       // cache read interface
       .rd_tag_o       (rd_tag[NumPorts-1]),
+      .rd_wid_o       (rd_wid[NumPorts-1]),
       .rd_idx_o       (rd_idx[NumPorts-1]),
       .rd_off_o       (rd_off[NumPorts-1]),
       .rd_req_o       (rd_req[NumPorts-1]),
@@ -340,6 +346,7 @@ module wt_dcache
       // read ports
       .rd_prio_i      (rd_prio),
       .rd_tag_i       (rd_tag),
+      .rd_wid_i       (rd_wid),
       .rd_idx_i       (rd_idx),
       .rd_off_i       (rd_off),
       .rd_req_i       (rd_req),
@@ -354,6 +361,7 @@ module wt_dcache
       .wr_cl_nc_i     (wr_cl_nc),
       .wr_cl_we_i     (wr_cl_we),
       .wr_cl_tag_i    (wr_cl_tag),
+      .wr_cl_wid_i    (wr_cl_wid),
       .wr_cl_idx_i    (wr_cl_idx),
       .wr_cl_off_i    (wr_cl_off),
       .wr_cl_data_i   (wr_cl_data),

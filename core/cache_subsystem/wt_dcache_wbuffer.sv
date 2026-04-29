@@ -87,6 +87,7 @@ module wt_dcache_wbuffer
     output logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_o,  // tag in - comes one cycle later
     output logic [DCACHE_CL_IDX_WIDTH-1:0] rd_idx_o,
     output logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_o,
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0]     rd_wid_o,  // World ID
     output logic rd_req_o,  // read the word at offset off_i[:3] in all ways
     output logic rd_tag_only_o,  // set to 1 here as we do not have to read the data arrays
     input logic rd_ack_i,
@@ -386,6 +387,7 @@ module wt_dcache_wbuffer
   assign rd_tag_o = rd_tag_q;  //delay by one cycle
   assign rd_idx_o = rd_paddr[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.DCACHE_OFFSET_WIDTH];
   assign rd_off_o = rd_paddr[CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0];
+  assign rd_wid_o = wbuffer_check_mux.wid;
   assign check_en_d = rd_req_o & rd_ack_i;
 
   // cache update port
@@ -427,7 +429,9 @@ module wt_dcache_wbuffer
 
     assign dirty[k] = |bdirty[k];
     assign valid[k] = |wbuffer_q[k].valid;
-    assign wbuffer_hit_oh[k] = valid[k] & (wbuffer_q[k].wtag == {req_port_i.address_tag, req_port_i.address_index[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.XLEN_ALIGN_BYTES]});
+    assign wbuffer_hit_oh[k] = valid[k] &
+                              (wbuffer_q[k].wid == req_port_i.wid) &
+                              (wbuffer_q[k].wtag == {req_port_i.address_tag, req_port_i.address_index[CVA6Cfg.DCACHE_INDEX_WIDTH-1:CVA6Cfg.XLEN_ALIGN_BYTES]});
 
     // checks if an invalidation/cache refill hits a particular word
     // note: an invalidation can hit multiple words!
