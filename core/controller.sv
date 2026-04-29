@@ -166,36 +166,43 @@ module controller
     // ---------------------------------
     // World Switch
     // ---------------------------------
-    if (ld_st_world_sw_i) begin
-      set_pc_commit_o        = 1'b1;
-      flush_if_o             = 1'b1;
-      flush_unissued_instr_o = 1'b1;
-      flush_id_o             = 1'b1;
-      flush_ex_o             = 1'b1;
+    if(CVA6Cfg.RVWorldsEn) begin
+      if (ld_st_world_sw_i) begin
+        set_pc_commit_o        = 1'b1;
+        flush_if_o             = 1'b1;
+        flush_unissued_instr_o = 1'b1;
+        flush_id_o             = 1'b1;
+        flush_ex_o             = 1'b1;
 
-      flush_dcache   = 1'b1;
-      ld_st_world_sw_active_d = 1'b1;
+        if(CVA6Cfg.DcacheFlushOnWorldSwitch) begin
+          flush_dcache   = 1'b1;
+          ld_st_world_sw_active_d = 1'b1;
+        end
 
-      if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
-      else flush_tlb_o = 1'b1;
-    end
+        if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
+        else flush_tlb_o = 1'b1;
+      end
 
-    if (inst_world_sw_i) begin
-      set_pc_commit_o        = 1'b1;
-      flush_if_o             = 1'b1;
-      flush_unissued_instr_o = 1'b1;
-      flush_id_o             = 1'b1;
-      flush_ex_o             = 1'b1;
+      if (inst_world_sw_i) begin
+        set_pc_commit_o        = 1'b1;
+        flush_if_o             = 1'b1;
+        flush_unissued_instr_o = 1'b1;
+        flush_id_o             = 1'b1;
+        flush_ex_o             = 1'b1;
 
-      flush_icache_o         = 1'b1;
+        if(CVA6Cfg.IcacheFlushOnWorldSwitch) begin
+          flush_icache_o         = 1'b1;
+        end
 
-      if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
-      else flush_tlb_o = 1'b1;
+        if (CVA6Cfg.RVH && v_i) flush_tlb_vvma_o = 1'b1;
+        else flush_tlb_o = 1'b1;
+      end
     end
 
     // this is not needed in the case since we
     // have a write-through cache in this case
-    if (CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI || CVA6Cfg.RVWorldsEn) begin
+    if (CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI ||
+        (CVA6Cfg.RVWorldsEn && CVA6Cfg.DcacheFlushOnWorldSwitch)) begin
       // Wait for the acknowledge here
       // Deassert fence_i state only after DCache flush completes
       if (flush_dcache_ack_i && fence_i_active_q) begin
@@ -207,7 +214,7 @@ module controller
       if (flush_dcache_ack_i && ld_st_world_sw_active_q) begin
         ld_st_world_sw_active_d = 1'b0;
       // keep the flush dcache signal high as long as we didn't get the acknowledge from the cache
-      end else if (fence_active_q) begin
+      end else if (fence_active_q || ld_st_world_sw_active_q) begin
         flush_dcache = 1'b1;
       end
     end
@@ -294,7 +301,8 @@ module controller
   // ----------------------
   always_comb begin
     // halt the core if the fence is active
-    halt_o = halt_csr_i || halt_acc_i || ((CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI) && fence_active_q) || ld_st_world_sw_active_q;
+    halt_o = halt_csr_i || halt_acc_i || ((CVA6Cfg.DcacheFlushOnFence || CVA6Cfg.DcacheFlushOnFenceI) && fence_active_q) ||
+      (CVA6Cfg.RVWorldsEn && CVA6Cfg.DcacheFlushOnWorldSwitch && ld_st_world_sw_active_q);
     // Halt frontend during fence.i to synchronize ICache/DCache flushes
     halt_frontend_o = fence_i_active_q;
   end

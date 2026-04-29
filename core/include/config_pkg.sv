@@ -213,6 +213,12 @@ package config_pkg;
     bit          DcacheFlushOnFence;
     bit          DcacheFlushOnFenceI;
     bit          DcacheInvalidateOnFlush;
+
+    // Force dcache flush on world switch, to ensure coherency between worlds. Only used if RVWorldsEn is set.
+    bit          DcacheFlushOnWorldSwitch;
+    // Force icache flush on world switch, to ensure coherency between worlds. Only used if RVWorldsEn is set.
+    bit          IcacheFlushOnWorldSwitch;
+
     // User field on data bus enable
     int unsigned DataUserEn;
     // Write-through data cache write buffer depth
@@ -263,6 +269,19 @@ package config_pkg;
     int unsigned SharedTlbDepth;
     // Option to enable Svnapot extension
     bit          SvnapotEn;
+
+    // RVWorlds
+    bit RVWorldsEn;
+    bit SMWID;
+    bit SMLWID;
+    bit SMLWIDLIST;
+    bit SMWDELEG;
+    bit SSWID;
+
+    int unsigned NWorlds;
+    int unsigned PMWID;
+    int unsigned PMWIDLIST;
+    int unsigned PMLWIDLIST;   
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -416,6 +435,8 @@ package config_pkg;
     bit DcacheFlushOnFence;
     bit DcacheFlushOnFenceI;
     bit DcacheInvalidateOnFlush;
+    bit DcacheFlushOnWorldSwitch;
+    bit IcacheFlushOnWorldSwitch;
 
     int unsigned DATA_USER_EN;
     int unsigned WtDcacheWbufDepth;

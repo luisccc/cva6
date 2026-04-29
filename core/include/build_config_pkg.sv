@@ -40,18 +40,19 @@ package build_config_pkg;
     cfg.XLEN_ALIGN_BYTES = $clog2(CVA6Cfg.XLEN / 8);
     cfg.ASID_WIDTH = (CVA6Cfg.XLEN == 64) ? 16 : 1;
     cfg.VMID_WIDTH = (CVA6Cfg.XLEN == 64) ? 14 : 1;
-    // TODO: Make it depend on user config
-    cfg.RVWorldsEn = 1;
-    cfg.NWorlds    = 8;
-    cfg.PMWID      = 1;
-    cfg.PMWIDLIST  = '1;
-    cfg.PMLWIDLIST = '1;
 
-    cfg.SMWID      = 1;
-    cfg.SMLWID     = 1;
-    cfg.SMLWIDLIST = 1;
-    cfg.SMWDELEG   = 1;
-    cfg.SSWID      = 1; 
+    // RVWorlds
+    cfg.RVWorldsEn = CVA6Cfg.RVWorldsEn;
+    cfg.NWorlds    = CVA6Cfg.RVWorldsEn ? CVA6Cfg.NWorlds : 0;
+    cfg.PMWID      = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMWID : 0;
+    cfg.PMWIDLIST  = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMWIDLIST : 0;
+    cfg.PMLWIDLIST = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMLWIDLIST : 0;
+
+    cfg.SMWID      = CVA6Cfg.RVWorldsEn ? CVA6Cfg.SMWID : 0;
+    cfg.SMLWID     = CVA6Cfg.RVWorldsEn ? CVA6Cfg.SMLWID : 0;
+    cfg.SMLWIDLIST = CVA6Cfg.RVWorldsEn ? CVA6Cfg.SMLWIDLIST : 0;
+    cfg.SMWDELEG   = CVA6Cfg.RVWorldsEn ? CVA6Cfg.SMWDELEG : 0;
+    cfg.SSWID      = CVA6Cfg.RVWorldsEn ? CVA6Cfg.SSWID : 0;
 
     cfg.FpgaEn = CVA6Cfg.FpgaEn;
     cfg.FpgaAlteraEn = CVA6Cfg.FpgaAlteraEn;
@@ -175,6 +176,9 @@ package build_config_pkg;
     cfg.DcacheFlushOnFence = CVA6Cfg.DcacheFlushOnFence;
     cfg.DcacheFlushOnFenceI = CVA6Cfg.DcacheFlushOnFenceI;
     cfg.DcacheInvalidateOnFlush = CVA6Cfg.DcacheInvalidateOnFlush;
+
+    cfg.DcacheFlushOnWorldSwitch = CVA6Cfg.DcacheFlushOnWorldSwitch;
+    cfg.IcacheFlushOnWorldSwitch = CVA6Cfg.IcacheFlushOnWorldSwitch;
 
     cfg.DATA_USER_EN = CVA6Cfg.DataUserEn;
     cfg.WtDcacheWbufDepth = CVA6Cfg.WtDcacheWbufDepth;
