@@ -30,10 +30,11 @@ package ariane_soc;
     SPI      = 4,
     Timer    = 5,
     UART     = 6,
-    APLIC    = 7,
-    CLINT    = 8,
-    ROM      = 9,
-    Debug    = 10
+    UART2    = 7,
+    APLIC    = 8,
+    CLINT    = 9,
+    ROM      = 10,
+    Debug    = 11
   } axi_slaves_t;
 
   localparam NB_PERIPHERALS = Debug + 1;
@@ -43,17 +44,19 @@ package ariane_soc;
     SPI_IRQ         = 1,
     ETH_IRQ         = 2,
     TIMER_FIRST_IRQ = 3,
-    TIMER_LAST_IRQ  = 6
+    TIMER_LAST_IRQ  = 6,
+    UART2_IRQ       = 7
   } irq_id_t;
 
   // Modify accordingly when adding IRQ IDs
-  localparam LAST_IRQ = TIMER_LAST_IRQ + 1;
+  localparam LAST_IRQ = UART2_IRQ + 1;
 
   localparam logic[63:0] DebugLength    = 64'h1000;
   localparam logic[63:0] ROMLength      = 64'h10000;
   localparam logic[63:0] CLINTLength    = 64'hC0000;
   localparam logic[63:0] APLICLength    = 64'h3FF_FFFF;
   localparam logic[63:0] UARTLength     = 64'h1000;
+  localparam logic[63:0] UART2Length    = 64'h1000;
   localparam logic[63:0] TimerLength    = 64'h1000;
   localparam logic[63:0] SPILength      = 64'h800000;
   localparam logic[63:0] IMSICLength    = 64'h800_0000;
@@ -74,6 +77,7 @@ package ariane_soc;
     CLINTBase    = 64'h0200_0000,
     APLICBase    = 64'h0C00_0000,
     UARTBase     = 64'h1000_0000,
+    UART2Base    = 64'h1000_2000,
     TimerBase    = 64'h1800_0000,
     SPIBase      = 64'h2000_0000,
     IMSICBase    = 64'h2400_0000,

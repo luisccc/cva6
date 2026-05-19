@@ -183,7 +183,9 @@ module ariane_xilinx (
   input  logic        tdi         ,
   output wire         tdo         ,
   input  logic        rx          ,
-  output logic        tx
+  output logic        tx          ,
+  input  logic        uart2_rx    ,
+  output logic        uart2_tx
 );
 
 // CVA6 Xilinx configuration
@@ -333,6 +335,7 @@ assign addr_map = '{
   '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
   '{ idx: ariane_soc::APLIC,    start_addr: ariane_soc::APLICBase,    end_addr: ariane_soc::APLICBase + ariane_soc::APLICLength       },
   '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
+  '{ idx: ariane_soc::UART2,    start_addr: ariane_soc::UART2Base,    end_addr: ariane_soc::UART2Base + ariane_soc::UART2Length       },
   '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
   '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
   '{ idx: ariane_soc::IMSIC,    start_addr: ariane_soc::IMSICBase,    end_addr: ariane_soc::IMSICBase + ariane_soc::IMSICLength       },
@@ -875,6 +878,7 @@ ariane_peripherals #(
     .AxiIdWidth   ( AxiIdWidthSlaves ),
     .AxiUserWidth ( AxiUserWidth     ),
     .InclUART     ( 1'b1             ),
+    .InclUART2    ( 1'b1             ),
     .InclGPIO     ( 1'b1             ),
     `ifdef KINTEX7
     .InclSPI      ( 1'b1         ),
@@ -898,6 +902,7 @@ ariane_peripherals #(
     .rst_ni       ( ndmreset_n                   ),
     .aplic        ( master[ariane_soc::APLIC]    ),
     .uart         ( master[ariane_soc::UART]     ),
+    .uart2        ( master[ariane_soc::UART2]    ),
     .spi          ( master[ariane_soc::SPI]      ),
     .gpio         ( master[ariane_soc::GPIO]     ),
     .ethernet     ( master[ariane_soc::Ethernet] ),
@@ -908,6 +913,8 @@ ariane_peripherals #(
     .irq_o        ( irq                          ),
     .rx_i         ( rx                           ),
     .tx_o         ( tx                           ),
+    .uart2_rx_i   ( uart2_rx                     ),
+    .uart2_tx_o   ( uart2_tx                     ),
     .eth_clk_i    ( eth_clk                      ),
     .eth_txck,
     .eth_rxck,
