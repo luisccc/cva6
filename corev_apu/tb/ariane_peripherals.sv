@@ -31,6 +31,10 @@ module ariane_peripherals #(
     AXI_BUS.Slave      spi                                                  ,
     AXI_BUS.Slave      ethernet                                             ,
     AXI_BUS.Slave      timer                                                ,
+    AXI_BUS.Slave      dma_cfg                                              ,
+    AXI_BUS.Master     dma_eng                                              ,
+    AXI_BUS.Slave      gpio_sim                             ,
+    AXI_BUS.Slave      checker_cfg                          ,
     // IMSIC
     AXI_BUS.Slave                                             imsic         ,
     input  imsic_pkg::csr_channel_to_imsic_t                  imsic_csr_i   , 
@@ -649,4 +653,129 @@ module ariane_peripherals #(
             .irq_o   ( irq_sources[ariane_soc::TIMER_LAST_IRQ:ariane_soc::TIMER_FIRST_IRQ] )
         );
     end
+
+    AXI_BUS_NSAID #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth  ),
+        .AXI_DATA_WIDTH ( AxiDataWidth  ),
+        .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidth ),
+        .AXI_USER_WIDTH ( AxiUserWidth  )
+    ) idma_axi_master ();
+
+    `AXI_ASSIGN(dma_eng, idma_axi_master)
+
+    dma_core_wrap #(
+        .BufferDepth        ( 64                       ), // Allows for the maximum allowed burst of length 256 - 2KiB
+        .AXI_ADDR_WIDTH		( AxiAddrWidth           	),
+        .AXI_DATA_WIDTH		( AxiDataWidth           	),
+        .AXI_ID_WIDTH  		( ariane_axi_soc::IdWidth   ),
+        .AXI_USER_WIDTH		( AxiUserWidth           	),
+        .AXI_SLV_ID_WIDTH   ( AxiIdWidth                ),
+
+        .AR_DEVICE_ID       ( 24'd10                    ),
+        .AW_DEVICE_ID       ( 24'd10                    ),
+
+        .AR_NSAID           ( 0 ),
+        .AW_NSAID           ( 0 )
+    ) i_dma (
+        .clk_i      		( clk_i            ),
+        .rst_ni     		( rst_ni           ),
+        .testmode_i 		( 1'b0             ),
+        // slave port
+        .axi_slave  		( dma_cfg          ),
+        // master port
+        .axi_master 		( idma_axi_master  ),
+
+        // IRQ
+        .irq_o              ( )
+    );
+
+    // AXI Bus between System Interconnect (Mst) and iopmp Programming IF (Slv)
+    ariane_axi_soc::req_nsaid_slv_t  checker_cp_req;
+    ariane_axi_soc::resp_slv_t checker_cp_rsp;
+    `AXI_ASSIGN_TO_REQ(checker_cp_req, checker_cfg)
+    `AXI_ASSIGN_FROM_RESP(checker_cfg, checker_cp_rsp)
+
+    assign checker_cp_req.aw.nsaid = ariane_axi::nsaid_t'(checker_cp_req.aw.user); // set NSAID for config accesses
+    assign checker_cp_req.ar.nsaid = ariane_axi::nsaid_t'(checker_cp_req.ar.user); // set NSAID for config accesses
+
+    ariane_axi_soc::req_nsaid_slv_t checker_oup_req;
+    ariane_axi_soc::resp_slv_t      checker_oup_rsp;
+
+    ariane_axi_soc::req_nsaid_slv_t  gpio_sim_req;
+    ariane_axi_soc::resp_slv_t gpio_sim_rsp;
+    `AXI_ASSIGN_TO_REQ(gpio_sim_req, gpio_sim)
+    `AXI_ASSIGN_FROM_RESP(gpio_sim, gpio_sim_rsp)
+
+    assign gpio_sim_req.aw.nsaid = ariane_axi_soc::nsaid_t'(gpio_sim_req.aw.user);
+    assign gpio_sim_req.ar.nsaid = ariane_axi_soc::nsaid_t'(gpio_sim_req.ar.user);
+
+    gpio_sim_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        .ID_SLV_WIDTH (AxiIdWidth),
+        .USER_WIDTH (AxiUserWidth),
+
+        // AXI request/response
+        .axi_req_t (ariane_axi_soc::req_nsaid_slv_t),
+        .axi_rsp_t (ariane_axi_soc::resp_slv_t)
+    ) i_gpio_sim_top (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+
+        // // AXI Config Slave port
+        .slv_req_i  (checker_oup_req),
+        .slv_rsp_o  (checker_oup_rsp)
+    );
+
+    wg_checker_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        // width of addr bus in bits
+        .ADDR_WIDTH (AxiAddrWidth),
+        // width of axuser signal
+        .USER_WIDTH (AxiUserWidth),
+        // width of id signal
+        .ID_WIDTH   (AxiIdWidth),
+        // width of id signal
+        .ID_SLV_WIDTH (AxiIdWidth),
+        // AXI request/response
+        .axi_req_nsaid_t  (ariane_axi_soc::req_nsaid_slv_t),
+        .axi_rsp_t        (ariane_axi_soc::resp_slv_t),
+
+        /// AXI Full Slave request struct type
+        .axi_req_slv_t    (ariane_axi_soc::req_nsaid_slv_t),
+        /// AXI Full Slave response struct type
+        .axi_rsp_slv_t    (ariane_axi_soc::resp_slv_t),
+
+        // AXI channel structs
+        .axi_aw_chan_t    (ariane_axi_soc::aw_nsaid_chan_slv_t),
+        .axi_w_chan_t     (ariane_axi::w_chan_t),
+        .axi_b_chan_t     (ariane_axi_soc::b_chan_slv_t),
+        .axi_ar_chan_t    (ariane_axi_soc::ar_nsaid_chan_slv_t),
+        .axi_r_chan_t     (ariane_axi_soc::r_chan_slv_t),
+
+        .axi_aw_chan_slv_t (ariane_axi_soc::aw_nsaid_chan_slv_t),
+        .axi_w_chan_slv_t  (ariane_axi::w_chan_t),
+        .axi_b_chan_slv_t  (ariane_axi_soc::b_chan_slv_t),
+        .axi_ar_chan_slv_t (ariane_axi_soc::ar_nsaid_chan_slv_t),
+        .axi_r_chan_slv_t  (ariane_axi_soc::r_chan_slv_t),
+
+        .N_SLOTS          (8)
+    ) i_wg_checker_top (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+
+        // // AXI Config Slave port
+        .control_req_i  (checker_cp_req),
+        .control_rsp_o  (checker_cp_rsp),
+
+        // AXI Bus Slave port
+        .slv_req_i  (gpio_sim_req),
+        .slv_rsp_o  (gpio_sim_rsp),
+
+        // AXI Bus Master port
+        .mst_req_o  (checker_oup_req),
+        .mst_rsp_i  (checker_oup_rsp)
+
+        // output logic  wsi_wire_o
+    );
+
 endmodule

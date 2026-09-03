@@ -47,6 +47,8 @@ set_property include_dirs { \
 	"../../core/cache_subsystem/hpdcache/rtl/include" \
 	"../register_interface/include" \
 	"../../core/include" \
+      "../iDMA/src/include" \
+      "../wg_checker/include/" \
 } [current_fileset]
 
 source scripts/add_sources.tcl

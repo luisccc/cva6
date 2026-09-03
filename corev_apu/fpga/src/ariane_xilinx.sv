@@ -213,7 +213,7 @@ localparam NumWords = (24 * 1024 * 1024) / 8;
   
 // WARNING: If NBSlave is modified, Xilinx's IPs under fpga/xilinx need to be updated with the new AXI id width and regenerated.
 // Otherwise reads and writes to DRAM may be returned to the wrong master and the crossbar will freeze. See issue #568.
-localparam NBSlave = 2; // debug, ariane
+localparam NBSlave = 4; // debug, ariane
 localparam AxiAddrWidth = 64;
 localparam AxiDataWidth = 64;
 localparam AxiIdWidthMaster = 4;
@@ -326,8 +326,8 @@ assign rst = ddr_sync_reset;
 // ---------------
 // AXI Xbar
 // ---------------
-
-axi_pkg::xbar_rule_64_t [ariane_soc::NB_PERIPHERALS-1:0] addr_map;
+localparam int unsigned NrAddrRules = ariane_soc::NB_PERIPHERALS + 3;
+axi_pkg::xbar_rule_64_t [NrAddrRules-1:0] addr_map;
 
 assign addr_map = '{
   '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
@@ -341,6 +341,11 @@ assign addr_map = '{
   '{ idx: ariane_soc::IMSIC,    start_addr: ariane_soc::IMSICBase,    end_addr: ariane_soc::IMSICBase + ariane_soc::IMSICLength       },
   '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
   '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
+  '{ idx: ariane_soc::CHECKED_IO,  start_addr: ariane_soc::DMABase,      end_addr: ariane_soc::DMABase + ariane_soc::DMALength         },
+  '{ idx: ariane_soc::CHECKED_IO,  start_addr: ariane_soc::GPIOSIMBase,      end_addr: ariane_soc::GPIOSIMBase + ariane_soc::GPIOSIMLength },
+  '{ idx: ariane_soc::CHECKED_IO,  start_addr: ariane_soc::AXIMEMBase,      end_addr: ariane_soc::AXIMEMBase + ariane_soc::AXIMEMLength },
+  '{ idx: ariane_soc::CHECKER_CFG, start_addr: ariane_soc::CheckerBase,      end_addr: ariane_soc::CheckerBase + ariane_soc::CheckerLength },
+  '{ idx: ariane_soc::CHECKED_IO, start_addr: ariane_soc::SHA256Base,   end_addr: ariane_soc::SHA256Base + ariane_soc::SHA256Length   },
   '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
 };
 
@@ -356,7 +361,7 @@ localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
   UniqueIds:          1'b0,
   AxiAddrWidth:       AxiAddrWidth,
   AxiDataWidth:       AxiDataWidth,
-  NoAddrRules:        ariane_soc::NB_PERIPHERALS
+  NoAddrRules:        NrAddrRules
 };
 
 axi_xbar_intf #(
@@ -907,6 +912,10 @@ ariane_peripherals #(
     .gpio         ( master[ariane_soc::GPIO]     ),
     .ethernet     ( master[ariane_soc::Ethernet] ),
     .timer        ( master[ariane_soc::Timer]    ),
+    .dma_eng      ( slave[2] ),
+    .checked_io   ( master[ariane_soc::CHECKED_IO] ),
+    .checker_cfg  ( master[ariane_soc::CHECKER_CFG] ),
+    .sha256_engine( slave[3]  ),
     .imsic        ( master[ariane_soc::IMSIC]    ),
     .imsic_csr_i  ( aia_csr_hart2imsic           ),
     .imsic_csr_o  ( aia_csr_imsic2hart           ),

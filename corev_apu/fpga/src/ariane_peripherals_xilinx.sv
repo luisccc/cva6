@@ -38,6 +38,10 @@ module ariane_peripherals #(
     AXI_BUS.Slave      gpio                                 ,
     AXI_BUS.Slave      ethernet                             ,
     AXI_BUS.Slave      timer                                ,
+    AXI_BUS.Slave      checked_io                           ,
+    AXI_BUS.Master     dma_eng                              ,
+    AXI_BUS.Slave      checker_cfg                          ,
+    AXI_BUS.Master     sha256_engine   , // SHA-256 memory initiator         (SHA    => XBAR )
     // IMSIC
     AXI_BUS.Slave                              imsic        ,
     input  imsic_pkg::csr_channel_to_imsic_t   imsic_csr_i  , 
@@ -994,4 +998,356 @@ module ariane_peripherals #(
         `endif
         /* pragma translate_on */
     end
+
+    ariane_axi_soc::req_nsaid_slv_t checker_oup_req;
+    ariane_axi_soc::resp_slv_t      checker_oup_rsp;
+
+    ariane_axi_soc::req_nsaid_slv_t [3:0] checked_target_req;
+    ariane_axi_soc::resp_slv_t      [3:0] checked_target_rsp;
+
+    logic [1:0] checker_aw_select;
+    logic [1:0] checker_ar_select;
+
+    assign checker_aw_select =
+        checker_oup_req.aw.addr >= ariane_soc::SHA256Base &&
+        checker_oup_req.aw.addr <  ariane_soc::SHA256Base +
+                                    ariane_soc::SHA256Length ? 2'd3 :
+        checker_oup_req.aw.addr >= ariane_soc::AXIMEMBase &&
+        checker_oup_req.aw.addr <  ariane_soc::AXIMEMBase +
+                                    ariane_soc::AXIMEMLength ? 2'd2 :
+        checker_oup_req.aw.addr >= ariane_soc::GPIOSIMBase &&
+        checker_oup_req.aw.addr <  ariane_soc::GPIOSIMBase +
+                                    ariane_soc::GPIOSIMLength ? 2'd1 : 2'd0;
+
+    assign checker_ar_select =
+        checker_oup_req.ar.addr >= ariane_soc::SHA256Base &&
+        checker_oup_req.ar.addr <  ariane_soc::SHA256Base +
+                                    ariane_soc::SHA256Length ? 2'd3 :
+        checker_oup_req.ar.addr >= ariane_soc::AXIMEMBase &&
+        checker_oup_req.ar.addr <  ariane_soc::AXIMEMBase +
+                                    ariane_soc::AXIMEMLength ? 2'd2 :
+        checker_oup_req.ar.addr >= ariane_soc::GPIOSIMBase &&
+        checker_oup_req.ar.addr <  ariane_soc::GPIOSIMBase +
+                                    ariane_soc::GPIOSIMLength ? 2'd1 : 2'd0;
+
+    axi_demux #(
+        .AxiIdWidth (AxiIdWidth),
+        .aw_chan_t  (ariane_axi_soc::aw_nsaid_chan_slv_t),
+        .w_chan_t   (ariane_axi::w_chan_t),
+        .b_chan_t   (ariane_axi_soc::b_chan_slv_t),
+        .ar_chan_t  (ariane_axi_soc::ar_nsaid_chan_slv_t),
+        .r_chan_t   (ariane_axi_soc::r_chan_slv_t),
+        .req_t      (ariane_axi_soc::req_nsaid_slv_t),
+        .resp_t     (ariane_axi_soc::resp_slv_t),
+        .NoMstPorts (4),
+        .MaxTrans   (8),
+        .UniqueIds  (1'b0),
+        .FallThrough(1'b0)
+    ) i_checker_output_demux (
+        .clk_i,
+        .rst_ni,
+        .test_i            (1'b0),
+        .slv_req_i         (checker_oup_req),
+        .slv_aw_select_i   (checker_aw_select),
+        .slv_ar_select_i   (checker_ar_select),
+        .slv_resp_o        (checker_oup_rsp),
+        .mst_reqs_o        (checked_target_req),
+        .mst_resps_i       (checked_target_rsp)
+    );
+
+    // AXI Bus between iDMA (Mst) and IOPMP TR IF (Slv)
+    // Extended with IOPMP-specific signals
+    AXI_BUS_NSAID #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth  ),
+        .AXI_DATA_WIDTH ( AxiDataWidth  ),
+        .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidth ),
+        .AXI_USER_WIDTH ( AxiUserWidth  )
+    ) idma_axi_master ();
+
+    AXI_BUS #(
+        .AXI_ADDR_WIDTH (AxiAddrWidth),
+        .AXI_DATA_WIDTH (AxiDataWidth),
+        .AXI_ID_WIDTH   (AxiIdWidth),
+        .AXI_USER_WIDTH (AxiUserWidth)
+    ) dma_cfg_checked();
+
+    `AXI_ASSIGN_FROM_REQ(dma_cfg_checked, checked_target_req[0])
+    `AXI_ASSIGN_TO_RESP(checked_target_rsp[0], dma_cfg_checked)
+
+    dma_core_wrap #(
+        .BufferDepth        ( 8                       ), // Allows for the maximum allowed burst of length 256 - 2KiB
+        .AXI_ADDR_WIDTH		( AxiAddrWidth           	),
+        .AXI_DATA_WIDTH		( AxiDataWidth           	),
+        .AXI_ID_WIDTH  		( ariane_axi_soc::IdWidth   ),
+        .AXI_USER_WIDTH		( AxiUserWidth           	),
+        .AXI_SLV_ID_WIDTH   ( AxiIdWidth                ),
+
+        .AR_DEVICE_ID       ( 24'd10                    ),
+        .AW_DEVICE_ID       ( 24'd10                    ),
+
+        .AR_NSAID           ( 0 ),
+        .AW_NSAID           ( 0 )
+    ) i_dma (
+        .clk_i      		( clk_i            ),
+        .rst_ni     		( rst_ni           ),
+        .testmode_i 		( 1'b0             ),
+        // slave port
+        .axi_slave  		( dma_cfg_checked  ),
+        // master port
+        .axi_master 		( idma_axi_master  ),
+
+        // IRQ
+        .irq_o              ( )
+    );
+
+    AXI_BUS_NSAID #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth  ),
+        .AXI_DATA_WIDTH ( AxiDataWidth  ),
+        .AXI_ID_WIDTH   ( ariane_axi_soc::IdWidth ),
+        .AXI_USER_WIDTH ( AxiUserWidth  )
+    ) idma_tagged_master ();
+
+    // As we extract the wid from the configurator, only writes are needed
+    wid_tagger #(
+        .USER_WIDTH (AxiUserWidth)
+    ) i_wid_tagger (
+        .clk_i,
+        .rst_ni,
+
+        .cfg_ready (dma_cfg_checked.aw_ready),
+        .cfg_valid (dma_cfg_checked.aw_valid),
+        .cfg_nsaid (dma_cfg_checked.aw_user),
+
+        .axi_slave (idma_axi_master),
+        .axi_master (idma_tagged_master)
+    );
+
+    `AXI_ASSIGN(dma_eng, idma_tagged_master)
+
+    // AXI Bus between System Interconnect (Mst) and iopmp Programming IF (Slv)
+    ariane_axi_soc::req_nsaid_slv_t  checker_cp_req;
+    ariane_axi_soc::resp_slv_t checker_cp_rsp;
+    `AXI_ASSIGN_TO_REQ(checker_cp_req, checker_cfg)
+    `AXI_ASSIGN_FROM_RESP(checker_cfg, checker_cp_rsp)
+
+    assign checker_cp_req.aw.nsaid = ariane_axi::nsaid_t'(checker_cp_req.aw.user); // set NSAID for config accesses
+    assign checker_cp_req.ar.nsaid = ariane_axi::nsaid_t'(checker_cp_req.ar.user); // set NSAID for config accesses
+
+    ariane_axi_soc::req_nsaid_slv_t  checked_io_req;
+    ariane_axi_soc::resp_slv_t checked_io_rsp;
+    `AXI_ASSIGN_TO_REQ(checked_io_req, checked_io)
+    `AXI_ASSIGN_FROM_RESP(checked_io, checked_io_rsp)
+
+    assign checked_io_req.aw.nsaid = ariane_axi::nsaid_t'(checked_io_req.aw.user); // set NSAID for config accesses
+    assign checked_io_req.ar.nsaid = ariane_axi::nsaid_t'(checked_io_req.ar.user); // set NSAID for config accesses
+
+    // ariane_axi_soc::req_nsaid_slv_t  gpio_sim_req;
+    // ariane_axi_soc::resp_slv_t gpio_sim_rsp;
+    // `AXI_ASSIGN_TO_REQ(gpio_sim_req, gpio_sim)
+    // `AXI_ASSIGN_FROM_RESP(gpio_sim, gpio_sim_rsp)
+
+    // assign gpio_sim_req.aw.nsaid = ariane_axi_soc::nsaid_t'(gpio_sim_req.aw.user);
+    // assign gpio_sim_req.ar.nsaid = ariane_axi_soc::nsaid_t'(gpio_sim_req.ar.user);
+
+    gpio_sim_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        .ID_SLV_WIDTH (AxiIdWidth),
+        .USER_WIDTH (AxiUserWidth),
+
+        // AXI request/response
+        .axi_req_t (ariane_axi_soc::req_nsaid_slv_t),
+        .axi_rsp_t (ariane_axi_soc::resp_slv_t)
+    ) i_gpio_sim_top (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+
+        // // AXI Config Slave port
+        .slv_req_i  (checked_target_req[1]),
+        .slv_rsp_o  (checked_target_rsp[1])
+    );
+
+    wg_checker_top #(
+        .DATA_WIDTH (AxiDataWidth),
+        // width of addr bus in bits
+        .ADDR_WIDTH (AxiAddrWidth),
+        // width of axuser signal
+        .USER_WIDTH (AxiUserWidth),
+        // width of id signal
+        .ID_WIDTH   (AxiIdWidth),
+        // width of id signal
+        .ID_SLV_WIDTH (AxiIdWidth),
+        // AXI request/response
+        .axi_req_nsaid_t  (ariane_axi_soc::req_nsaid_slv_t),
+        .axi_rsp_t        (ariane_axi_soc::resp_slv_t),
+
+        /// AXI Full Slave request struct type
+        .axi_req_slv_t    (ariane_axi_soc::req_nsaid_slv_t),
+        /// AXI Full Slave response struct type
+        .axi_rsp_slv_t    (ariane_axi_soc::resp_slv_t),
+
+        // AXI channel structs
+        .axi_aw_chan_t    (ariane_axi_soc::aw_nsaid_chan_slv_t),
+        .axi_w_chan_t     (ariane_axi::w_chan_t),
+        .axi_b_chan_t     (ariane_axi_soc::b_chan_slv_t),
+        .axi_ar_chan_t    (ariane_axi_soc::ar_nsaid_chan_slv_t),
+        .axi_r_chan_t     (ariane_axi_soc::r_chan_slv_t),
+
+        .axi_aw_chan_slv_t (ariane_axi_soc::aw_nsaid_chan_slv_t),
+        .axi_w_chan_slv_t  (ariane_axi::w_chan_t),
+        .axi_b_chan_slv_t  (ariane_axi_soc::b_chan_slv_t),
+        .axi_ar_chan_slv_t (ariane_axi_soc::ar_nsaid_chan_slv_t),
+        .axi_r_chan_slv_t  (ariane_axi_soc::r_chan_slv_t),
+
+        .N_SLOTS          (8)
+    ) i_wg_checker_top (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+
+        // // AXI Config Slave port
+        .control_req_i  (checker_cp_req),
+        .control_rsp_o  (checker_cp_rsp),
+
+        // AXI Bus Slave port
+        .slv_req_i  (checked_io_req),
+        .slv_rsp_o  (checked_io_rsp),
+
+        // AXI Bus Master port
+        .mst_req_o  (checker_oup_req),
+        .mst_rsp_i  (checker_oup_rsp)
+
+        // output logic  wsi_wire_o
+    );
+
+    // AXI Bus between System Interconnect (Mst) and iopmp Programming IF (Slv)
+    // ariane_axi_soc::req_nsaid_slv_t  axi_mem_req;
+    // ariane_axi_soc::resp_slv_t axi_mem_rsp;
+    // `AXI_ASSIGN_TO_REQ(axi_mem_req, axi_mem)
+    // `AXI_ASSIGN_FROM_RESP(axi_mem, axi_mem_rsp)
+
+    axi_memory #(
+        .NumWords  (32'h4000 / (AxiDataWidth / 8)), // 1024 / 8 = 128 words
+        .DataWidth (AxiDataWidth),
+        .NumPorts  (1),
+        .Latency   (1),
+        .axi_req_t (ariane_axi_soc::req_nsaid_slv_t),
+        .axi_rsp_t (ariane_axi_soc::resp_slv_t)
+    ) (
+        .clk_i,
+        .rst_ni,
+
+        .slv_req_i (checked_target_req[2]),
+        .slv_rsp_o (checked_target_rsp[2])
+    );
+
+    // ---------------
+    // 6. SHA-256 memory accelerator
+    // ---------------
+    AXI_BUS #(
+        .AXI_ADDR_WIDTH (AxiAddrWidth),
+        .AXI_DATA_WIDTH (AxiDataWidth),
+        .AXI_ID_WIDTH   (AxiIdWidth),
+        .AXI_USER_WIDTH (AxiUserWidth)
+    ) sha256_cfg();
+
+    `AXI_ASSIGN_FROM_REQ(sha256_cfg, checked_target_req[3])
+    `AXI_ASSIGN_TO_RESP(checked_target_rsp[3], sha256_cfg)
+
+    assign sha256_cfg.b_user      = '0;
+    assign sha256_cfg.r_user      = '0;
+    assign sha256_engine.aw_atop  = '0;
+    assign sha256_engine.aw_user  = '0;
+    assign sha256_engine.w_user   = '0;
+    assign sha256_engine.ar_user  = '0;
+
+    sha256_memory_accelerator #(
+        .ADDR_WIDTH      ( AxiAddrWidth        ),
+        .ID_WIDTH        ( ariane_axi::IdWidth ),
+        .CTRL_ID_WIDTH   ( AxiIdWidth          ),
+        .MAX_BURST_BEATS ( 8                   )
+    ) i_sha256_memory_accelerator (
+        .clk_i,
+        .rst_ni,
+
+        .s_axi_awid_i      ( sha256_cfg.aw_id       ),
+        .s_axi_awaddr_i    ( sha256_cfg.aw_addr[5:0] ),
+        .s_axi_awlen_i     ( sha256_cfg.aw_len      ),
+        .s_axi_awsize_i    ( sha256_cfg.aw_size     ),
+        .s_axi_awburst_i   ( sha256_cfg.aw_burst    ),
+        .s_axi_awlock_i    ( sha256_cfg.aw_lock     ),
+        .s_axi_awcache_i   ( sha256_cfg.aw_cache    ),
+        .s_axi_awprot_i    ( sha256_cfg.aw_prot     ),
+        .s_axi_awqos_i     ( sha256_cfg.aw_qos      ),
+        .s_axi_awregion_i  ( sha256_cfg.aw_region   ),
+        .s_axi_awvalid_i   ( sha256_cfg.aw_valid    ),
+        .s_axi_awready_o   ( sha256_cfg.aw_ready    ),
+        .s_axi_wdata_i     ( sha256_cfg.w_data      ),
+        .s_axi_wstrb_i     ( sha256_cfg.w_strb      ),
+        .s_axi_wlast_i     ( sha256_cfg.w_last      ),
+        .s_axi_wvalid_i    ( sha256_cfg.w_valid     ),
+        .s_axi_wready_o    ( sha256_cfg.w_ready     ),
+        .s_axi_bid_o       ( sha256_cfg.b_id        ),
+        .s_axi_bresp_o     ( sha256_cfg.b_resp      ),
+        .s_axi_bvalid_o    ( sha256_cfg.b_valid     ),
+        .s_axi_bready_i    ( sha256_cfg.b_ready     ),
+        .s_axi_arid_i      ( sha256_cfg.ar_id       ),
+        .s_axi_araddr_i    ( sha256_cfg.ar_addr[5:0] ),
+        .s_axi_arlen_i     ( sha256_cfg.ar_len      ),
+        .s_axi_arsize_i    ( sha256_cfg.ar_size     ),
+        .s_axi_arburst_i   ( sha256_cfg.ar_burst    ),
+        .s_axi_arlock_i    ( sha256_cfg.ar_lock     ),
+        .s_axi_arcache_i   ( sha256_cfg.ar_cache    ),
+        .s_axi_arprot_i    ( sha256_cfg.ar_prot     ),
+        .s_axi_arqos_i     ( sha256_cfg.ar_qos      ),
+        .s_axi_arregion_i  ( sha256_cfg.ar_region   ),
+        .s_axi_arvalid_i   ( sha256_cfg.ar_valid    ),
+        .s_axi_arready_o   ( sha256_cfg.ar_ready    ),
+        .s_axi_rid_o       ( sha256_cfg.r_id        ),
+        .s_axi_rdata_o     ( sha256_cfg.r_data      ),
+        .s_axi_rresp_o     ( sha256_cfg.r_resp      ),
+        .s_axi_rlast_o     ( sha256_cfg.r_last      ),
+        .s_axi_rvalid_o    ( sha256_cfg.r_valid     ),
+        .s_axi_rready_i    ( sha256_cfg.r_ready     ),
+
+        .m_axi_arid_o      ( sha256_engine.ar_id      ),
+        .m_axi_araddr_o    ( sha256_engine.ar_addr    ),
+        .m_axi_arlen_o     ( sha256_engine.ar_len     ),
+        .m_axi_arsize_o    ( sha256_engine.ar_size    ),
+        .m_axi_arburst_o   ( sha256_engine.ar_burst   ),
+        .m_axi_arlock_o    ( sha256_engine.ar_lock    ),
+        .m_axi_arcache_o   ( sha256_engine.ar_cache   ),
+        .m_axi_arprot_o    ( sha256_engine.ar_prot    ),
+        .m_axi_arqos_o     ( sha256_engine.ar_qos     ),
+        .m_axi_arregion_o  ( sha256_engine.ar_region  ),
+        .m_axi_arvalid_o   ( sha256_engine.ar_valid   ),
+        .m_axi_arready_i   ( sha256_engine.ar_ready   ),
+        .m_axi_rid_i       ( sha256_engine.r_id       ),
+        .m_axi_rdata_i     ( sha256_engine.r_data     ),
+        .m_axi_rresp_i     ( sha256_engine.r_resp     ),
+        .m_axi_rlast_i     ( sha256_engine.r_last     ),
+        .m_axi_rvalid_i    ( sha256_engine.r_valid    ),
+        .m_axi_rready_o    ( sha256_engine.r_ready    ),
+
+        .m_axi_awid_o      ( sha256_engine.aw_id      ),
+        .m_axi_awaddr_o    ( sha256_engine.aw_addr    ),
+        .m_axi_awlen_o     ( sha256_engine.aw_len     ),
+        .m_axi_awsize_o    ( sha256_engine.aw_size    ),
+        .m_axi_awburst_o   ( sha256_engine.aw_burst   ),
+        .m_axi_awlock_o    ( sha256_engine.aw_lock    ),
+        .m_axi_awcache_o   ( sha256_engine.aw_cache   ),
+        .m_axi_awprot_o    ( sha256_engine.aw_prot    ),
+        .m_axi_awqos_o     ( sha256_engine.aw_qos     ),
+        .m_axi_awregion_o  ( sha256_engine.aw_region  ),
+        .m_axi_awvalid_o   ( sha256_engine.aw_valid   ),
+        .m_axi_awready_i   ( sha256_engine.aw_ready   ),
+        .m_axi_wdata_o     ( sha256_engine.w_data     ),
+        .m_axi_wstrb_o     ( sha256_engine.w_strb     ),
+        .m_axi_wlast_o     ( sha256_engine.w_last     ),
+        .m_axi_wvalid_o    ( sha256_engine.w_valid    ),
+        .m_axi_wready_i    ( sha256_engine.w_ready    ),
+        .m_axi_bid_i       ( sha256_engine.b_id       ),
+        .m_axi_bresp_i     ( sha256_engine.b_resp     ),
+        .m_axi_bvalid_i    ( sha256_engine.b_valid    ),
+        .m_axi_bready_o    ( sha256_engine.b_ready    )
+    );
+
 endmodule

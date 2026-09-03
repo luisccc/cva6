@@ -503,11 +503,15 @@ module ariane_testharness #(
     '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
     '{ idx: ariane_soc::APLIC,    start_addr: ariane_soc::APLICBase,    end_addr: ariane_soc::APLICBase + ariane_soc::APLICLength       },
     '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
+    '{ idx: ariane_soc::UART2,    start_addr: ariane_soc::UART2Base,    end_addr: ariane_soc::UART2Base + ariane_soc::UART2Length       },
     '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
     '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
     '{ idx: ariane_soc::IMSIC,    start_addr: ariane_soc::IMSICBase,    end_addr: ariane_soc::IMSICBase + ariane_soc::IMSICLength       },
     '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
     '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
+    '{ idx: ariane_soc::DMA_CFG,  start_addr: ariane_soc::DMABase,      end_addr: ariane_soc::DMABase + ariane_soc::DMALength           },
+    '{ idx: ariane_soc::GPIO_SIM,    start_addr: ariane_soc::GPIOSIMBase,      end_addr: ariane_soc::GPIOSIMBase + ariane_soc::GPIOSIMLength         },
+    '{ idx: ariane_soc::CHECKER_CFG,  start_addr: ariane_soc::CheckerBase,      end_addr: ariane_soc::CheckerBase + ariane_soc::CheckerLength },
     '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
   };
 
@@ -603,6 +607,10 @@ module ariane_testharness #(
     .spi          ( master[ariane_soc::SPI]      ),
     .ethernet     ( master[ariane_soc::Ethernet] ),
     .timer        ( master[ariane_soc::Timer]    ),
+    .dma_cfg      ( master[ariane_soc::DMA_CFG]  ),
+    .dma_eng      ( slave[2] ),
+    .gpio_sim     ( master[ariane_soc::GPIO_SIM] ),
+    .checker_cfg   ( master[ariane_soc::CHECKER_CFG]  ),
     .imsic        ( master[ariane_soc::IMSIC]    ),
     .imsic_csr_i  ( aia_csr_hart2imsic           ),
     .imsic_csr_o  ( aia_csr_imsic2hart           ),

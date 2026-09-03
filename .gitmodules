@@ -57,4 +57,13 @@
 	url = https://github.com/pulp-platform/gpio.git
 [submodule "corev_apu/aia"]
 	path = corev_apu/aia
-	url = git@github.com:zero-day-labs/riscv-aia.git
+	url = git@github.com:luisccc/riscv-aia.git
+[submodule "corev_apu/wg_checker"]
+	path = corev_apu/wg_checker
+	url = git@github.com:zero-day-labs/wg_checker.git
+[submodule "corev_apu/sha256"]
+	path = corev_apu/sha256
+	url = git@github.com:luisccc/sha256.git
+[submodule "corev_apu/iDMA"]
+	path = corev_apu/iDMA
+	url = git@github.com:luisccc/iDMA.git
