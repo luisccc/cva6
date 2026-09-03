@@ -95,6 +95,8 @@ module load_store_unit
     input  riscv::priv_lvl_t                          ld_st_priv_lvl_i,
     // Virtualization mode at which load and stores should happen - CSR_REGFILE
     input  logic                                      ld_st_v_i,
+    // World ID 
+    input  logic        [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_i,
     // Instruction is a hyp load/store - CSR_REGFILE
     output logic                                      csr_hs_ld_st_inst_o,
     // Supervisor User Memory - CSR_REGFILE
@@ -859,7 +861,8 @@ module load_store_unit
     be_i,
     fu_data_i.fu,
     fu_data_i.operation,
-    fu_data_i.trans_id
+    fu_data_i.trans_id,
+    ld_st_wid_i
   };
 
   lsu_bypass #(

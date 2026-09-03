@@ -32,6 +32,10 @@ module csr_regfile
     input logic time_irq_i,
     // send a flush request out when a CSR with a side effect changes - CONTROLLER
     output logic flush_o,
+    // send signal signaling a world switch load/store - CONTROLLER
+    output logic ld_st_world_sw_o,
+    // send signal signaling a world switch instruction - CONTROLLER
+    output logic inst_world_sw_o,
     // halt requested - CONTROLLER
     output logic halt_csr_o,
     // Instruction to be committed - ID_STAGE
@@ -70,6 +74,7 @@ module csr_regfile
     output logic [CVA6Cfg.VLEN-1:0] trap_vector_base_o,
     // Current privilege level the CPU is in - EX_STAGE
     output riscv::priv_lvl_t priv_lvl_o,
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_o,
     // Current virtualization mode state the CPU is in - EX_STAGE
     output logic v_o,
     // Imprecise FP exception from the accelerator (fcsr.fflags format) - ACC_DISPATCHER
@@ -106,6 +111,8 @@ module csr_regfile
     output riscv::priv_lvl_t ld_st_priv_lvl_o,
     // Virtualization mode at which load and stores should happen - EX_STAGE
     output logic ld_st_v_o,
+    // World ID
+    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_o,
     // Current instruction is a Hypervisor Load/Store Instruction - EX_STAGE
     input logic csr_hs_ld_st_inst_i,
     // Supervisor User Memory - EX_STAGE
@@ -193,6 +200,34 @@ module csr_regfile
     // RVFI
     output rvfi_probes_csr_t rvfi_csr_o
 );
+
+  function automatic logic [$clog2(CVA6Cfg.NWorlds)-1:0] get_world_id (
+    input riscv::priv_lvl_t priv_lvl,
+    input logic v
+  );
+    get_world_id = CVA6Cfg.PMWID;
+
+    if (CVA6Cfg.SMWID) begin
+      get_world_id = mwid_q;
+    end
+
+    if (CVA6Cfg.SMLWID && CVA6Cfg.RVU && priv_lvl != riscv::PRIV_LVL_M) begin
+      get_world_id = mlwid_q;
+
+      if(v) begin
+        get_world_id = hslwid_q;
+
+        if (priv_lvl == riscv::PRIV_LVL_U) begin
+            get_world_id = vslwid_q;
+        end
+      end
+      // If we are in U-Mode or in virtual
+      else if(CVA6Cfg.SSWID && mwiddeleg_q != 0 && CVA6Cfg.RVS &&
+          (priv_lvl == riscv::PRIV_LVL_U || v))
+        get_world_id = slwid_q;
+      
+    end
+  endfunction : get_world_id
 
   localparam logic [63:0] SMODE_STATUS_READ_MASK = ariane_pkg::smode_status_read_mask(CVA6Cfg);
   localparam logic [63:0] HS_DELEG_INTERRUPTS = {
@@ -306,6 +341,25 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
 
   logic wfi_d, wfi_q;
+
+  // Worlds CSRs
+  // Smwid
+  logic [CVA6Cfg.XLEN-1:0] mwid_q, mwid_d;
+  // Smlwid
+  logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
+  // Smlwidlist
+  logic [CVA6Cfg.NWorlds-1:0] mlwidlist_q, mlwidlist_d;
+  // Smwdeleg / Sswid
+  logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
+  logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;
+  // Shwgd
+  logic [CVA6Cfg.XLEN-1:0] hslwid_q, hslwid_d;
+  logic [CVA6Cfg.XLEN-1:0] hwiddeleg_q, hwiddeleg_d;
+  logic [CVA6Cfg.XLEN-1:0] vslwid_q, vslwid_d;
+
+  // RV Worlds
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_q;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_q;
 
   logic [63:0] cycle_q, cycle_d;
   logic [63:0] instret_q, instret_d;
@@ -1162,6 +1216,41 @@ module csr_regfile
             end
             else read_access_exception = 1'b1;
           end
+          // Worlds
+          riscv::CSR_MWID: begin
+            if (CVA6Cfg.SMWID) csr_rdata = mwid_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_MLWID: begin
+            if (CVA6Cfg.RVU && CVA6Cfg.SMLWID) csr_rdata = mlwid_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_MLWIDLIST: begin
+            if (CVA6Cfg.RVU && CVA6Cfg.SMLWIDLIST) csr_rdata = mlwidlist_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_MWIDDELEG: begin
+            if (CVA6Cfg.RVS && CVA6Cfg.SMWDELEG) csr_rdata = mwiddeleg_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_SLWID: begin
+            if (CVA6Cfg.RVS && CVA6Cfg.SSWID && mwiddeleg_q != 0) csr_rdata = slwid_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_VSLWID: begin
+            // HS must be able to save and restore this guest CSR.
+            if (CVA6Cfg.RVH && hwiddeleg_q != 0) csr_rdata = vslwid_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_HSLWID: begin
+            // We have to have H Mode and mwiddeleg different than 0
+            if (CVA6Cfg.RVH && mwiddeleg_q != 0) csr_rdata = hslwid_q;
+            else read_access_exception = 1'b1;
+          end
+          riscv::CSR_HWIDDELEG: begin
+            if (CVA6Cfg.RVH) csr_rdata = hwiddeleg_q;
+            else read_access_exception = 1'b1;
+          end
           default: read_access_exception = 1'b1;
         endcase
       end
@@ -1454,6 +1543,33 @@ module csr_regfile
 
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
+
+    // Worlds
+    if (CVA6Cfg.SMWID) begin
+      mwid_d = mwid_q;
+    end
+
+    if (CVA6Cfg.RVU) begin
+      if (CVA6Cfg.SMLWID) begin
+        mlwid_d = mlwid_q;  
+      end
+      if (CVA6Cfg.SMLWIDLIST) begin
+        mlwidlist_d = mlwidlist_q;
+      end
+    end
+    if (CVA6Cfg.RVS) begin
+      if (CVA6Cfg.SSWID) begin
+        slwid_d = slwid_q;
+      end
+      if (CVA6Cfg.SMWDELEG) begin
+        mwiddeleg_d = mwiddeleg_q;
+      end
+    end
+    if (CVA6Cfg.RVH) begin
+      vslwid_d = vslwid_q;
+      hslwid_d = hslwid_q;
+      hwiddeleg_d = hwiddeleg_q;
+    end
 
     // check for correct access rights and that we are writing
     if (csr_we) begin
@@ -2191,7 +2307,7 @@ module csr_regfile
           riscv::CSR_MENVCFG: begin
             fiom_d = csr_wdata[0];
             if (CVA6Cfg.RVSSTC && CVA6Cfg.XLEN == 64)
-              mstce_d = csr_wdata[63];
+              mstce_d = csr_wdata[64];
           end
           riscv::CSR_MENVCFGH:
           if (CVA6Cfg.XLEN == 32) begin
@@ -2457,6 +2573,40 @@ module csr_regfile
             if (!CVA6Cfg.SpmpPresent) begin
               update_access_exception = 1'b1;
             end
+          end
+          // Worlds
+          riscv::CSR_MWID: begin
+            // Check for the lock
+            if (!mwid_q[CVA6Cfg.XLEN - 1]) mwid_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_MLWID: begin
+            if (CVA6Cfg.RVU) mlwid_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_MLWIDLIST: begin
+            if (!mwid_q[CVA6Cfg.XLEN - 1]) mlwidlist_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_MWIDDELEG: begin
+            if (CVA6Cfg.RVS) mwiddeleg_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_SLWID: begin
+            if (CVA6Cfg.RVS) slwid_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_VSLWID: begin
+            if (CVA6Cfg.RVH) vslwid_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_HWIDDELEG: begin
+            if (CVA6Cfg.RVH) hwiddeleg_d = csr_wdata;
+            else update_access_exception = 1'b1;
+          end
+          riscv::CSR_HSLWID: begin
+            if (CVA6Cfg.RVH) hslwid_d = csr_wdata;
+            else update_access_exception = 1'b1;
           end
           default: update_access_exception = 1'b1;
         endcase
@@ -3383,6 +3533,16 @@ module csr_regfile
   // in debug mode we execute with privilege level M
   assign priv_lvl_o = (CVA6Cfg.DebugEn && debug_mode_q) ? riscv::PRIV_LVL_M : priv_lvl_q;
   assign v_o = CVA6Cfg.RVH ? v_q : 1'b0;
+  // WID assignment
+  assign ld_st_wid_o = get_world_id(ld_st_priv_lvl_o, ld_st_v_o);
+  assign instr_wid_o = get_world_id(priv_lvl_o, v_o);
+
+  always_comb begin
+    inst_world_sw_o = instr_wid_o != instr_wid_q ? 1'b1 : 1'b0;
+
+    ld_st_world_sw_o = ld_st_wid_o != ld_st_wid_q ? 1'b1 : 1'b0;
+  end
+
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
   assign frm_o = fcsr_q.frm;
@@ -3597,6 +3757,34 @@ module csr_regfile
         pmpaddr_q[i] <= CVA6Cfg.PMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
       end
       pmpcfg_q[CVA6Cfg.NrPMPResource]  <= '0;
+
+      // Worlds
+      if (CVA6Cfg.SMWID) begin
+        mwid_q <= CVA6Cfg.PMWID;
+      end
+
+      if (CVA6Cfg.RVU) begin
+        if (CVA6Cfg.SMWID) begin
+          mlwid_q <= '0;
+        end
+        if (CVA6Cfg.SMLWIDLIST) begin
+          mlwidlist_q <= CVA6Cfg.PMLWIDLIST;
+        end
+      end
+      if (CVA6Cfg.RVS) begin
+        if (CVA6Cfg.SSWID) begin
+          slwid_q <= '0;
+        end
+        if (CVA6Cfg.SSWID) begin
+          mwiddeleg_q <= '0;
+        end
+      end
+      if (CVA6Cfg.RVH) begin
+        vslwid_q <= '0;
+        hslwid_q <= '0;
+        hwiddeleg_q <= '1;
+      end
+
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -3691,6 +3879,37 @@ module csr_regfile
       // pmp
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
+
+      // Worlds
+      ld_st_wid_q <= ld_st_wid_o;
+      instr_wid_q <= instr_wid_o;
+
+      if (CVA6Cfg.SMWID) begin
+        mwid_q  <= mwid_d;
+      end
+
+      if (CVA6Cfg.RVU) begin
+        if (CVA6Cfg.SMLWID) begin
+          mlwid_q <= mlwid_d;
+        end
+        if (CVA6Cfg.SMLWIDLIST) begin
+          mlwidlist_q <= mlwidlist_d;
+        end
+      end
+      if (CVA6Cfg.RVS) begin
+        if (CVA6Cfg.SSWID) begin
+          slwid_q <= slwid_d;
+        end
+        if (CVA6Cfg.SMWDELEG) begin
+          mwiddeleg_q <= mwiddeleg_d & CVA6Cfg.PMLWIDLIST & mlwidlist_q;
+        end
+      end
+      if (CVA6Cfg.RVH) begin
+        vslwid_q <= vslwid_d;
+        hslwid_q <= hslwid_d;
+        // HS may only re-delegate WIDs that M-mode delegated to it.
+        hwiddeleg_q <= '1;//hwiddeleg_d; //& mwiddeleg_q;
+      end
     end
   end
 

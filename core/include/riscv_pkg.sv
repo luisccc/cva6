@@ -419,6 +419,7 @@ package riscv;
     CSR_VSTIMECMPH       = 12'h25D,
     CSR_VSATP            = 12'h280,
     CSR_VSPMPEN          = 12'h283,
+    CSR_VSLWID           = 12'h290,
     CSR_VSPMPENH         = 12'h293,
     CSR_VSTOPI           = 12'hEB0,
     // Supervisor Mode CSRs
@@ -445,6 +446,7 @@ package riscv;
     CSR_STOPEI           = 12'h15C,
     CSR_STIMECMPH        = 12'h15D,
     CSR_SATP             = 12'h180,
+    CSR_SLWID            = 12'h190,  // Worlds
     CSR_SPMPEN           = 12'h183,
     CSR_SPMPENH          = 12'h193,
     CSR_STOPI            = 12'hDB0,
@@ -478,6 +480,8 @@ package riscv;
     CSR_HCONTEXT         = 12'h6A8,
     CSR_HTIMEDELTA       = 12'h605,
     CSR_HTIMEDELTAH      = 12'h615,
+    CSR_HWIDDELEG        = 12'h620,
+    CSR_HSLWID           = 12'h621,
     // Machine Mode CSRs
     CSR_MSTATUS          = 12'h300,
     CSR_MISA             = 12'h301,
@@ -534,6 +538,10 @@ package riscv;
     CSR_MTVAL2           = 12'h34B,
     CSR_MENVCFG          = 12'h30A,
     CSR_MENVCFGH         = 12'h31A,
+    CSR_MWID             = 12'h38E,   // Worlds
+    CSR_MLWIDLIST        = 12'h38F,   // Worlds
+    CSR_MLWID            = 12'h390,   // Worlds
+    CSR_MWIDDELEG        = 12'h748,   // Worlds
     CSR_MISELECT         = 12'h350,
     CSR_MIREG            = 12'h351,
     CSR_MIREG2           = 12'h352,

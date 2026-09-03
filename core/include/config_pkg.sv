@@ -184,6 +184,10 @@ package config_pkg;
     bit                          DcacheFlushOnFence;
     // Data cache invalidate on flush
     bit                          DcacheInvalidateOnFlush;
+    // Force dcache flush on world switch, to ensure coherency between worlds. Only used if RVWorldsEn is set.
+    bit          DcacheFlushOnWorldSwitch;
+    // Force icache flush on world switch, to ensure coherency between worlds. Only used if RVWorldsEn is set.
+    bit          IcacheFlushOnWorldSwitch;
     // User field on data bus enable
     int unsigned                 DataUserEn;
     // Write-through data cache write buffer depth
@@ -226,6 +230,19 @@ package config_pkg;
     bit unsigned                 UseSharedTlb;
     // MMU depth of shared TLB
     int unsigned                 SharedTlbDepth;
+
+    // RVWorlds
+    bit RVWorldsEn;
+    bit SMWID;
+    bit SMLWID;
+    bit SMLWIDLIST;
+    bit SMWDELEG;
+    bit SSWID;
+
+    int unsigned NWorlds;
+    int unsigned PMWID;
+    int unsigned PMWIDLIST;
+    int unsigned PMLWIDLIST; 
   } cva6_user_cfg_t;
 
   typedef struct packed {
@@ -238,6 +255,18 @@ package config_pkg;
     int unsigned XLEN_ALIGN_BYTES;
     int unsigned ASID_WIDTH;
     int unsigned VMID_WIDTH;
+
+    bit RVWorldsEn;
+    bit SMWID;
+    bit SMLWID;
+    bit SMLWIDLIST;
+    bit SMWDELEG;
+    bit SSWID;
+
+    int unsigned NWorlds;
+    int unsigned PMWID;
+    int unsigned PMWIDLIST;
+    int unsigned PMLWIDLIST;
 
     bit FpgaEn;
     bit FpgaAlteraEn;
@@ -364,6 +393,8 @@ package config_pkg;
 
     bit DcacheFlushOnFence;
     bit DcacheInvalidateOnFlush;
+    bit DcacheFlushOnWorldSwitch;
+    bit IcacheFlushOnWorldSwitch;
 
     int unsigned DATA_USER_EN;
     int unsigned WtDcacheWbufDepth;

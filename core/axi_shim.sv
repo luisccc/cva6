@@ -32,6 +32,7 @@ module axi_shim #(
     input logic rd_req_i,
     output logic rd_gnt_o,
     input logic [CVA6Cfg.AxiAddrWidth-1:0] rd_addr_i,
+    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] rd_wid_i,
     input logic [$clog2(AxiNumWords)-1:0] rd_blen_i,  // axi convention: LEN-1
     input logic [2:0] rd_size_i,
     input  logic [CVA6Cfg.AxiIdWidth-1:0]   rd_id_i,   // use same ID for reads, or make sure you only have one outstanding read tx
@@ -48,6 +49,7 @@ module axi_shim #(
     input logic wr_req_i,
     output logic wr_gnt_o,
     input logic [CVA6Cfg.AxiAddrWidth-1:0] wr_addr_i,
+    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] wr_wid_i,
     input logic [AxiNumWords-1:0][CVA6Cfg.AxiDataWidth-1:0] wr_data_i,
     input logic [AxiNumWords-1:0][CVA6Cfg.AxiUserWidth-1:0] wr_user_i,
     input logic [AxiNumWords-1:0][(CVA6Cfg.AxiDataWidth/8)-1:0] wr_be_i,
@@ -98,7 +100,7 @@ module axi_shim #(
   assign axi_req_o.aw.cache = axi_pkg::CACHE_MODIFIABLE;
   assign axi_req_o.aw.qos = 4'b0;
   assign axi_req_o.aw.atop = wr_atop_i;
-  assign axi_req_o.aw.user = '0;
+  assign axi_req_o.aw.user = CVA6Cfg.AxiUserWidth'(wr_wid_i);
 
   // data
   assign axi_req_o.w.data = wr_data_i[wr_cnt_q];
@@ -260,7 +262,7 @@ module axi_shim #(
   assign axi_req_o.ar.lock   = rd_lock_i;
   assign axi_req_o.ar.cache  = axi_pkg::CACHE_MODIFIABLE;
   assign axi_req_o.ar.qos    = 4'b0;
-  assign axi_req_o.ar.user   = '0;
+  assign axi_req_o.ar.user   = CVA6Cfg.AxiUserWidth'(rd_wid_i);
 
   // make the read request
   assign axi_req_o.ar_valid  = rd_req_i;

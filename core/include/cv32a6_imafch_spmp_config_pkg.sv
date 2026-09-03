@@ -67,7 +67,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigPerfCounterEn = 1;
 
-  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::HPDCACHE_WT;
+  localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::WT;
 
   localparam CVA6ConfigMmuPresent = 0;
 
@@ -167,7 +167,23 @@ package cva6_config_pkg;
       SharedTlbDepth: int'(64),
       NrLoadPipeRegs: int'(CVA6ConfigNrLoadPipeRegs),
       NrStorePipeRegs: int'(CVA6ConfigNrStorePipeRegs),
-      DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth)
+      DcacheIdWidth: int'(CVA6ConfigDcacheIdWidth),
+
+      // RVWorlds
+      RVWorldsEn: bit'(1),
+      SMWID: bit'(1),
+      SMLWID: bit'(1),
+      SMLWIDLIST: bit'(1),
+      SMWDELEG: bit'(1),
+      SSWID: bit'(1),
+
+      NWorlds: unsigned'(8),
+      PMWID: unsigned'(1),
+      PMWIDLIST: '1,
+      PMLWIDLIST: '1,
+
+      DcacheFlushOnWorldSwitch: bit'(1),
+      IcacheFlushOnWorldSwitch: bit'(1)
   };
 
 endpackage

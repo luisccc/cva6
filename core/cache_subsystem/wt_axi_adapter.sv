@@ -83,6 +83,7 @@ module wt_axi_adapter
   logic axi_wr_valid, axi_rd_valid, axi_rd_rdy, axi_wr_rdy;
   logic axi_rd_lock, axi_wr_lock, axi_rd_exokay, axi_wr_exokay, wr_exokay;
   logic [CVA6Cfg.AxiAddrWidth-1:0] axi_rd_addr, axi_wr_addr;
+  logic [$clog2(CVA6Cfg.NWorlds)-1:0] axi_rd_wid, axi_wr_wid;
   logic [AxiBlenWidth-1:0] axi_rd_blen, axi_wr_blen;
   logic [2:0] axi_rd_size, axi_wr_size;
   logic [CVA6Cfg.AxiIdWidth-1:0]
@@ -143,6 +144,7 @@ module wt_axi_adapter
     axi_wr_user[0]  = dcache_data.user;
     // Cast to AXI address width
     axi_wr_addr  = CVA6Cfg.AxiAddrWidth'(dcache_data.paddr);
+    axi_wr_wid   = dcache_data.wid;
     axi_wr_size  = dcache_data.size;
     axi_wr_req   = 1'b0;
     axi_wr_blen  = '0;// single word writes
@@ -173,6 +175,8 @@ module wt_axi_adapter
       if (dcache_data.size[2]) begin
         axi_rd_blen = AxiRdBlenDcache[AxiBlenWidth-1:0];
       end
+    
+    axi_rd_wid = dcache_data.wid;
     end else begin
       // Cast to AXI address width
       axi_rd_addr = CVA6Cfg.AxiAddrWidth'(icache_data.paddr);
@@ -180,6 +184,8 @@ module wt_axi_adapter
       if (!icache_data.nc) begin
         axi_rd_blen = AxiRdBlenIcache[AxiBlenWidth-1:0];
       end
+
+      axi_rd_wid = icache_data.wid;
     end
 
     // signal that an invalidation message
@@ -683,6 +689,7 @@ module wt_axi_adapter
       .rd_req_i   (axi_rd_req),
       .rd_gnt_o   (axi_rd_gnt),
       .rd_addr_i  (axi_rd_addr),
+      .rd_wid_i   (axi_rd_wid),
       .rd_blen_i  (axi_rd_blen),
       .rd_size_i  (axi_rd_size),
       .rd_id_i    (axi_rd_id_in),
@@ -697,6 +704,7 @@ module wt_axi_adapter
       .wr_req_i   (axi_wr_req),
       .wr_gnt_o   (axi_wr_gnt),
       .wr_addr_i  (axi_wr_addr),
+      .wr_wid_i   (axi_wr_wid),
       .wr_data_i  (axi_wr_data),
       .wr_user_i  (axi_wr_user),
       .wr_be_i    (axi_wr_be),

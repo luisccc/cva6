@@ -27,7 +27,7 @@ VCOM ?= vcom$(questa_version)
 VLIB ?= vlib$(questa_version)
 VMAP ?= vmap$(questa_version)
 # verilator version
-verilator := /home/manuale97/sPMP/cva6/tools/verilator-v5.008/bin/verilator
+verilator ?= verilator
 # traget option
 target-options ?=
 # additional defines
