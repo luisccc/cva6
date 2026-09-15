@@ -201,23 +201,29 @@ module csr_regfile
     output logic break_from_trigger_o
 );
 
-  function automatic logic [$clog2(CVA6Cfg.NWorlds)-1:0] get_world_id (
+  typedef logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid_t;
+
+  function automatic wid_t get_world_id (
     input riscv::priv_lvl_t priv_lvl,
-    input logic v
+    input logic v,
+    input logic [CVA6Cfg.XLEN-1:0] mwid,
+    input logic [CVA6Cfg.XLEN-1:0] mlwid,
+    input logic [CVA6Cfg.XLEN-1:0] slwid,
+    input logic [CVA6Cfg.XLEN-1:0] mwiddeleg
   );
-    get_world_id = CVA6Cfg.PMWID;
+    get_world_id = wid_t'(CVA6Cfg.PMWID);
 
     if (CVA6Cfg.SMWID) begin
-      get_world_id = mwid_q;
+      get_world_id = wid_t'(mwid);
     end
 
     if (CVA6Cfg.SMLWID && CVA6Cfg.RVU && priv_lvl != riscv::PRIV_LVL_M) begin
-      get_world_id = mlwid_q;
+      get_world_id = wid_t'(mlwid);
 
       // If we are in U-Mode or in virtual
-      if(CVA6Cfg.SSWID && mwiddeleg_q != 0 && CVA6Cfg.RVS &&
+      if(CVA6Cfg.SSWID && mwiddeleg != 0 && CVA6Cfg.RVS &&
           (priv_lvl == riscv::PRIV_LVL_U || v))
-        get_world_id = slwid_q;
+        get_world_id = wid_t'(slwid);
     end
   endfunction : get_world_id
 
@@ -356,8 +362,9 @@ module csr_regfile
   logic debug_from_mcontrol;
 
   // RV Worlds
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_q;
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_q;
+  wid_t instr_wid_next, ld_st_wid_next;
+  riscv::priv_lvl_t instr_priv_lvl_next, ld_st_priv_lvl_next;
+  logic instr_v_next, ld_st_v_next, mprv_next;
 
   // CBO enable flags from menvcfg/senvcfg/henvcfg
   riscv::cbie_t mcbie_q, mcbie_d, scbie_q, scbie_d, hcbie_q, hcbie_d;
@@ -1160,10 +1167,6 @@ module csr_regfile
 
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
-
-    // Worlds
-    ld_st_wid_q <= CVA6Cfg.PMWID;
-    instr_wid_q <= CVA6Cfg.PMWID;
 
     if (CVA6Cfg.SMWID) begin
       mwid_d = mwid_q;
@@ -2781,15 +2784,50 @@ module csr_regfile
   // in debug mode we execute with privilege level M
   assign priv_lvl_o = (CVA6Cfg.DebugEn && debug_mode_q) ? riscv::PRIV_LVL_M : priv_lvl_q;
   assign v_o = CVA6Cfg.RVH ? v_q : 1'b0;
-  // WID assignment
-  assign ld_st_wid_o = get_world_id(ld_st_priv_lvl_o, ld_st_v_o);
-  assign instr_wid_o = get_world_id(priv_lvl_o, v_o);
 
-  always_comb begin
-    inst_world_sw_o = instr_wid_o != instr_wid_q ? 1'b1 : 1'b0;
+  // Derive the effective execution state that will be installed on the next clock edge. World
+  // switches are detected before the state update so that traps and xRET keep their redirect PC.
+  always_comb begin : world_switch_next_state
+    instr_priv_lvl_next =
+        (CVA6Cfg.DebugEn && debug_mode_d) ? riscv::PRIV_LVL_M : priv_lvl_d;
+    instr_v_next = CVA6Cfg.RVH ? v_d : 1'b0;
+    mprv_next =
+        (CVA6Cfg.DebugEn && debug_mode_d && !dcsr_d.mprven) ? 1'b0 : mstatus_d.mprv;
 
-    ld_st_world_sw_o = ld_st_wid_o != ld_st_wid_q ? 1'b1 : 1'b0;
+    if (CVA6Cfg.RVH) begin
+      if (csr_hs_ld_st_inst_i) begin
+        ld_st_priv_lvl_next = riscv::priv_lvl_t'(hstatus_d.spvp);
+      end else begin
+        ld_st_priv_lvl_next = mprv_next ? mstatus_d.mpp : instr_priv_lvl_next;
+      end
+      ld_st_v_next = (mprv_next ? mstatus_d.mpv : v_d) || csr_hs_ld_st_inst_i;
+    end else begin
+      if (CVA6Cfg.RVU) begin
+        ld_st_priv_lvl_next = mprv_next ? mstatus_d.mpp : instr_priv_lvl_next;
+      end else begin
+        ld_st_priv_lvl_next = instr_priv_lvl_next;
+      end
+      ld_st_v_next = 1'b0;
+    end
   end
+
+  // Request WIDs reflect the current architectural state. The switch indicators look ahead to
+  // the committed next state
+  assign instr_wid_o = get_world_id(
+      priv_lvl_o, v_o, mwid_q, mlwid_q, slwid_q, mwiddeleg_q
+  );
+  assign ld_st_wid_o = get_world_id(
+      ld_st_priv_lvl_o, ld_st_v_o, mwid_q, mlwid_q, slwid_q, mwiddeleg_q
+  );
+  assign instr_wid_next = get_world_id(
+      instr_priv_lvl_next, instr_v_next, mwid_d, mlwid_d, slwid_d, mwiddeleg_d
+  );
+  assign ld_st_wid_next = get_world_id(
+      ld_st_priv_lvl_next, ld_st_v_next, mwid_d, mlwid_d, slwid_d, mwiddeleg_d
+  );
+
+  assign inst_world_sw_o = CVA6Cfg.RVWorldsEn && (instr_wid_next != instr_wid_o);
+  assign ld_st_world_sw_o = CVA6Cfg.RVWorldsEn && (ld_st_wid_next != ld_st_wid_o);
 
   // FPU outputs
   assign fflags_o = fcsr_q.fflags;
@@ -2975,7 +3013,6 @@ module csr_regfile
         end
       end
 
-      // Worlds
       if (CVA6Cfg.SMWID) begin
         mwid_q <= CVA6Cfg.PMWID;
       end
@@ -3090,10 +3127,6 @@ module csr_regfile
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
       
-      // Worlds
-      ld_st_wid_q <= ld_st_wid_o;
-      instr_wid_q <= instr_wid_o;
-
       if (CVA6Cfg.SMWID) begin
         mwid_q  <= mwid_d;
       end
