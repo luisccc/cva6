@@ -2040,7 +2040,8 @@ module csr_regfile
           else update_access_exception = 1'b1;
         end
         riscv::CSR_MLWIDLIST: begin
-          if (!mwid_q[CVA6Cfg.XLEN - 1]) mlwidlist_d = csr_wdata;
+          if (!mwid_q[CVA6Cfg.XLEN - 1])
+            mlwidlist_d = csr_wdata & CVA6Cfg.PMLWIDLIST;
           else update_access_exception = 1'b1;
         end
         riscv::CSR_MWIDDELEG: begin

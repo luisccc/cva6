@@ -186,8 +186,8 @@ package cva6_config_pkg;
       PMWIDLIST: '1,
       PMLWIDLIST: '1,
 
-      DcacheFlushOnWorldSwitch: bit'(1),
-      IcacheFlushOnWorldSwitch: bit'(1)
+      DcacheFlushOnWorldSwitch: bit'(0),
+      IcacheFlushOnWorldSwitch: bit'(0)
   };
 
 endpackage

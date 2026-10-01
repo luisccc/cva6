@@ -492,8 +492,8 @@ package riscv;
     CSR_MTVAL2           = 12'h34B,
     CSR_MENVCFG          = 12'h30A,
     CSR_MENVCFGH         = 12'h31A,
-    CSR_MWID             = 12'h38E,   // Worlds
-    CSR_MLWIDLIST        = 12'h38F,   // Worlds
+    CSR_MWID             = 12'h749,   // Worlds
+    CSR_MLWIDLIST        = 12'h74A,   // Worlds
     CSR_MLWID            = 12'h390,   // Worlds
     CSR_MWIDDELEG        = 12'h748,   // Worlds
     CSR_PMPCFG0          = 12'h3A0,
