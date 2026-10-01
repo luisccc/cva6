@@ -137,7 +137,7 @@ module store_unit
   logic [CVA6Cfg.XLEN-1:0] st_data_n, st_data_q;
   logic [(CVA6Cfg.XLEN/8)-1:0] st_be_n, st_be_q;
   logic [1:0] st_data_size_n, st_data_size_q;
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] st_wid_n, st_wid_q;
+  logic [CVA6Cfg.WID_WIDTH-1:0] st_wid_n, st_wid_q;
   amo_t amo_op_d, amo_op_q;
   cbo_t cbo_op_d, cbo_op_q;
 

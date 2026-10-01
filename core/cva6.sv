@@ -59,7 +59,7 @@ module cva6
     localparam type icache_arsp_t = struct packed {
       logic                    fetch_req;    // address translation request
       logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;  // virtual address out
-      logic [$clog2(CVA6Cfg.NWorlds)-1:0] fetch_wid;
+      logic [CVA6Cfg.WID_WIDTH-1:0] fetch_wid;
     },
 
     // I$ data requests
@@ -69,7 +69,7 @@ module cva6
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
       logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
-      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
+      logic [CVA6Cfg.WID_WIDTH-1:0] wid;
     },
     localparam type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
@@ -166,7 +166,7 @@ module cva6
       fu_t                              fu;
       fu_op                             operation;
       logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id;
-      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
+      logic [CVA6Cfg.WID_WIDTH-1:0] wid;
     },
 
 
@@ -186,7 +186,7 @@ module cva6
       logic [CVA6Cfg.PLEN-1:0] paddr;  // physical address
       logic nc;  // noncacheable
       logic [CVA6Cfg.MEM_TID_WIDTH-1:0] tid;  // thread id (used as transaction id in Ariane)
-      logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid;
+      logic [CVA6Cfg.WID_WIDTH-1:0] wid;
     },
     localparam type icache_rtrn_t = struct packed {
       wt_cache_pkg::icache_in_t rtype;  // see definitions above
@@ -215,7 +215,7 @@ module cva6
       logic                                  kill_req;
       logic                                  tag_valid;
       cbo_t                                  cbo_op;
-      logic [$clog2(CVA6Cfg.NWorlds)-1:0]    wid;
+      logic [CVA6Cfg.WID_WIDTH-1:0]    wid;
     },
 
     localparam type dcache_req_o_t = struct packed {
@@ -385,7 +385,7 @@ module cva6
   logic eret;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid;
+  logic [CVA6Cfg.WID_WIDTH-1:0] instr_wid;
   logic mbe;  // determines the data endian-ness of the processor
 
   localparam NumPorts = 4;
@@ -570,7 +570,7 @@ module cva6
   logic en_ld_st_g_translation_csr_ex;
   riscv::priv_lvl_t ld_st_priv_lvl_csr_ex;
   logic ld_st_v_csr_ex;
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_ex;
+  logic [CVA6Cfg.WID_WIDTH-1:0] ld_st_wid_ex;
   logic sum_csr_ex;
   logic vs_sum_csr_ex;
   logic mxr_csr_ex;

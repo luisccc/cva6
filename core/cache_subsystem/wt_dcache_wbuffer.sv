@@ -79,7 +79,7 @@ module wt_dcache_wbuffer
     output logic miss_nc_o,  // request to I/O space
     output logic [2:0] miss_size_o,  //
     output logic [CVA6Cfg.MEM_TID_WIDTH-1:0]          miss_id_o,       // ID of this transaction (wbuffer uses all IDs from 0 to DCACHE_MAX_TX-1)
-    output logic [$clog2(CVA6Cfg.NWorlds)-1:0]        miss_wid_o,      // World ID
+    output logic [CVA6Cfg.WID_WIDTH-1:0]        miss_wid_o,      // World ID
     // write responses from memory
     input logic miss_rtrn_vld_i,
     input logic [CVA6Cfg.MEM_TID_WIDTH-1:0] miss_rtrn_id_i,  // transaction ID to clear
@@ -87,7 +87,7 @@ module wt_dcache_wbuffer
     output logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_o,  // tag in - comes one cycle later
     output logic [DCACHE_CL_IDX_WIDTH-1:0] rd_idx_o,
     output logic [CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off_o,
-    output logic [$clog2(CVA6Cfg.NWorlds)-1:0]     rd_wid_o,  // World ID
+    output logic [CVA6Cfg.WID_WIDTH-1:0]     rd_wid_o,  // World ID
     output logic rd_req_o,  // read the word at offset off_i[:3] in all ways
     output logic rd_tag_only_o,  // set to 1 here as we do not have to read the data arrays
     input logic rd_ack_i,

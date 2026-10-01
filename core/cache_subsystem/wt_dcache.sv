@@ -67,7 +67,7 @@ module wt_dcache
     logic [(CVA6Cfg.XLEN/8)-1:0] txblock;  // byte is part of transaction in-flight
     logic checked;  // if cache state of this word has been checked
     logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] hit_oh;  // valid way in the cache
-    logic [$clog2(CVA6Cfg.NWorlds) - 1:0] wid; 
+    logic [CVA6Cfg.WID_WIDTH- 1:0] wid; 
   };
 
   // miss unit <-> read controllers
@@ -77,7 +77,7 @@ module wt_dcache
   logic                                                                           wr_cl_vld;
   logic                                                                           wr_cl_nc;
   logic     [      CVA6Cfg.DCACHE_SET_ASSOC-1:0]                                  wr_cl_we;
-  logic     [       $clog2(CVA6Cfg.NWorlds)-1:0]                                  wr_cl_wid;
+  logic     [       CVA6Cfg.WID_WIDTH-1:0]                                  wr_cl_wid;
   logic     [      CVA6Cfg.DCACHE_TAG_WIDTH-1:0]                                  wr_cl_tag;
   logic     [           DCACHE_CL_IDX_WIDTH-1:0]                                  wr_cl_idx;
   logic     [   CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0]                                  wr_cl_off;
@@ -106,7 +106,7 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  miss_replay;
   logic     [                      NumPorts-1:0]                                  miss_rtrn_vld;
   logic     [         CVA6Cfg.MEM_TID_WIDTH-1:0]                                  miss_rtrn_id;
-  logic     [                      NumPorts-1:0][    $clog2(CVA6Cfg.NWorlds)-1:0] miss_wid;
+  logic     [                      NumPorts-1:0][    CVA6Cfg.WID_WIDTH-1:0] miss_wid;
 
   // memory <-> read controllers/miss unit
   logic     [                      NumPorts-1:0]                                  rd_prio;
@@ -114,7 +114,7 @@ module wt_dcache
   logic     [                      NumPorts-1:0]                                  rd_req;
   logic     [                      NumPorts-1:0]                                  rd_ack;
   logic     [                      NumPorts-1:0][   CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag;
-  logic     [                      NumPorts-1:0][    $clog2(CVA6Cfg.NWorlds)-1:0] rd_wid;
+  logic     [                      NumPorts-1:0][    CVA6Cfg.WID_WIDTH-1:0] rd_wid;
   logic     [                      NumPorts-1:0][        DCACHE_CL_IDX_WIDTH-1:0] rd_idx;
   logic     [                      NumPorts-1:0][CVA6Cfg.DCACHE_OFFSET_WIDTH-1:0] rd_off;
   logic     [                  CVA6Cfg.XLEN-1:0]                                  rd_data;
@@ -249,7 +249,7 @@ module wt_dcache
       assign miss_req[k] = 1'b0;
       assign miss_we[k] = 1'b0;
       assign miss_wdata[k] = {{CVA6Cfg.XLEN} {1'b0}};
-      assign miss_wid[k] = {{$clog2(CVA6Cfg.NWorlds)} {1'b0}};
+      assign miss_wid[k] = {{CVA6Cfg.WID_WIDTH} {1'b0}};
       assign miss_wuser[k] = {{CVA6Cfg.DCACHE_USER_WIDTH} {1'b0}};
       assign miss_vld_bits_o[k] = {{CVA6Cfg.DCACHE_SET_ASSOC} {1'b0}};
       assign miss_paddr[k] = {{CVA6Cfg.PLEN} {1'b0}};
@@ -257,7 +257,7 @@ module wt_dcache
       assign miss_size[k] = 3'b0;
       assign miss_id[k] = {{CVA6Cfg.MEM_TID_WIDTH} {1'b0}};
       assign rd_tag[k] = {{CVA6Cfg.DCACHE_TAG_WIDTH} {1'b0}};
-      assign rd_wid[k] = {{$clog2(CVA6Cfg.NWorlds)} {1'b0}};
+      assign rd_wid[k] = {{CVA6Cfg.WID_WIDTH} {1'b0}};
       assign rd_idx[k] = {{DCACHE_CL_IDX_WIDTH} {1'b0}};
       assign rd_off[k] = {{CVA6Cfg.DCACHE_OFFSET_WIDTH} {1'b0}};
       assign rd_req[k] = 1'b0;

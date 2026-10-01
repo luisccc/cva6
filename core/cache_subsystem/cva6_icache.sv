@@ -78,7 +78,7 @@ module cva6_icache
   // signals
   logic cache_en_d, cache_en_q;  // cache is enabled
   logic [CVA6Cfg.VLEN-1:0] vaddr_d, vaddr_q;
-  logic [ $clog2(CVA6Cfg.NWorlds)-1:0] wid_d, wid_q;  // World ID
+  logic [ CVA6Cfg.WID_WIDTH-1:0] wid_d, wid_q;  // World ID
   logic paddr_is_nc;  // asserted if physical address is non-cacheable
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] cl_hit;  // hit from tag compare
   logic cache_rden;  // triggers cache lookup
@@ -109,7 +109,7 @@ module cva6_icache
   logic [ICACHE_OFFSET_WIDTH-1:0] cl_offset_d, cl_offset_q;  // offset in cache line
   logic [CVA6Cfg.ICACHE_TAG_WIDTH-1:0] cl_tag_d, cl_tag_q;  // this is the cache tag
   logic [CVA6Cfg.ICACHE_TAG_WIDTH-1:0]          cl_tag_rdata [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the tags coming from the tagmem
-  logic [ $clog2(CVA6Cfg.NWorlds)-1:0]          cl_wid_rdata [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the wids coming from the tagmem
+  logic [ CVA6Cfg.WID_WIDTH-1:0]          cl_wid_rdata [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the wids coming from the tagmem
   logic [CVA6Cfg.ICACHE_LINE_WIDTH-1:0]         cl_rdata     [CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the cachelines coming from the cache
   logic [CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0]    cl_ruser[CVA6Cfg.ICACHE_SET_ASSOC-1:0]; // these are the cachelines coming from the user cache
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.FETCH_WIDTH-1:0] cl_sel;  // selected word from each cacheline
@@ -430,7 +430,8 @@ module cva6_icache
   logic [CVA6Cfg.ICACHE_SET_ASSOC_WIDTH-1:0] hit_idx;
 
   for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_tag_cmpsel
-    assign cl_hit[i] = (cl_tag_rdata[i] == cl_tag_d) & vld_rdata[i] & (cl_wid_rdata[i] == wid_q);
+    assign cl_hit[i] = (cl_tag_rdata[i] == cl_tag_d) & vld_rdata[i] &
+                       (!CVA6Cfg.RVWorldsEn || (cl_wid_rdata[i] == wid_q));
     assign cl_sel[i] = cl_rdata[i][{cl_offset_q, 3'b0}+:CVA6Cfg.FETCH_WIDTH];
     assign cl_user[i] = CVA6Cfg.FETCH_USER_EN ? cl_ruser[i][{cl_offset_q, 3'b0}+:CVA6Cfg.FETCH_USER_WIDTH] : '0;
   end
@@ -459,13 +460,17 @@ module cva6_icache
   ///////////////////////////////////////////////////////
 
 
-  logic [CVA6Cfg.ICACHE_TAG_WIDTH + $clog2(CVA6Cfg.NWorlds):0] cl_tag_valid_rdata[CVA6Cfg.ICACHE_SET_ASSOC-1:0];
+  // WID bits stored in the tag RAM (none when RVWorlds is disabled)
+  localparam int unsigned TagWidBits = CVA6Cfg.RVWorldsEn ? CVA6Cfg.WID_WIDTH : 0;
+
+  logic [CVA6Cfg.ICACHE_TAG_WIDTH + TagWidBits:0] cl_tag_valid_wdata[CVA6Cfg.ICACHE_SET_ASSOC-1:0];
+  logic [CVA6Cfg.ICACHE_TAG_WIDTH + TagWidBits:0] cl_tag_valid_rdata[CVA6Cfg.ICACHE_SET_ASSOC-1:0];
 
   for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_sram
     // Tag RAM
     sram_cache #(
-        // tag + valid bit
-        .DATA_WIDTH (CVA6Cfg.ICACHE_TAG_WIDTH + 1 + $clog2(CVA6Cfg.NWorlds)),
+        // tag + valid bit (+ wid)
+        .DATA_WIDTH (CVA6Cfg.ICACHE_TAG_WIDTH + 1 + TagWidBits),
         .BYTE_ACCESS(0),
         .TECHNO_CUT (CVA6Cfg.TechnoCut),
         .NUM_WORDS  (ICACHE_NUM_WORDS)
@@ -478,7 +483,7 @@ module cva6_icache
         // we can always use the saved tag here since it takes a
         // couple of cycle until we write to the cache upon a miss
         .wuser_i('0),
-        .wdata_i({wid_q, vld_wdata[i], cl_tag_q}),
+        .wdata_i(cl_tag_valid_wdata[i]),
         .be_i   ('1),
         .ruser_o(),
         .rdata_o(cl_tag_valid_rdata[i])
@@ -486,7 +491,14 @@ module cva6_icache
 
     assign cl_tag_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH-1:0];
     assign vld_rdata[i]    = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH];
-    assign cl_wid_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH + 1 +: $clog2(CVA6Cfg.NWorlds)];
+
+    if (CVA6Cfg.RVWorldsEn) begin : gen_tag_wid
+      assign cl_tag_valid_wdata[i] = {wid_q, vld_wdata[i], cl_tag_q};
+      assign cl_wid_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH+1+:CVA6Cfg.WID_WIDTH];
+    end else begin : gen_no_tag_wid
+      assign cl_tag_valid_wdata[i] = {vld_wdata[i], cl_tag_q};
+      assign cl_wid_rdata[i] = '0;
+    end
 
     // Data RAM
     sram_cache #(
@@ -570,7 +582,7 @@ module cva6_icache
   // this is only used for verification!
   logic vld_mirror[ICACHE_NUM_WORDS-1:0][CVA6Cfg.ICACHE_SET_ASSOC-1:0];
   logic [CVA6Cfg.ICACHE_TAG_WIDTH-1:0] tag_mirror[ICACHE_NUM_WORDS-1:0][CVA6Cfg.ICACHE_SET_ASSOC-1:0];
-  logic [ $clog2(CVA6Cfg.NWorlds)-1:0] wid_mirror[ICACHE_NUM_WORDS-1:0][CVA6Cfg.ICACHE_SET_ASSOC-1:0];
+  logic [ CVA6Cfg.WID_WIDTH-1:0] wid_mirror[ICACHE_NUM_WORDS-1:0][CVA6Cfg.ICACHE_SET_ASSOC-1:0];
   logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] tag_write_duplicate_test;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : p_mirror

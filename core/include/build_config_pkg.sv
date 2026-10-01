@@ -44,6 +44,7 @@ package build_config_pkg;
     // RVWorlds
     cfg.RVWorldsEn = CVA6Cfg.RVWorldsEn;
     cfg.NWorlds    = CVA6Cfg.RVWorldsEn ? CVA6Cfg.NWorlds : 0;
+    cfg.WID_WIDTH  = (CVA6Cfg.RVWorldsEn && CVA6Cfg.NWorlds > 1) ? $clog2(CVA6Cfg.NWorlds) : 1;
     cfg.PMWID      = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMWID : 0;
     cfg.PMWIDLIST  = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMWIDLIST : 0;
     cfg.PMLWIDLIST = CVA6Cfg.RVWorldsEn ? CVA6Cfg.PMLWIDLIST : 0;

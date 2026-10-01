@@ -76,7 +76,7 @@ module csr_regfile
     output logic [CVA6Cfg.VLEN-1:0] trap_vector_base_o,
     // Current privilege level the CPU is in - EX_STAGE
     output riscv::priv_lvl_t priv_lvl_o,
-    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] instr_wid_o,
+    output logic [CVA6Cfg.WID_WIDTH-1:0] instr_wid_o,
     // Data Endian mode
     output logic mbe_o,
     // Current virtualization mode state the CPU is in - EX_STAGE
@@ -112,7 +112,7 @@ module csr_regfile
     // Virtualization mode at which load and stores should happen - EX_STAGE
     output logic ld_st_v_o,
     // World ID
-    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_o,
+    output logic [CVA6Cfg.WID_WIDTH-1:0] ld_st_wid_o,
     // Current instruction is a Hypervisor Load/Store Instruction - EX_STAGE
     input logic csr_hs_ld_st_inst_i,
     // Supervisor User Memory - EX_STAGE
@@ -201,7 +201,7 @@ module csr_regfile
     output logic break_from_trigger_o
 );
 
-  typedef logic [$clog2(CVA6Cfg.NWorlds)-1:0] wid_t;
+  typedef logic [CVA6Cfg.WID_WIDTH-1:0] wid_t;
 
   function automatic wid_t get_world_id (
     input riscv::priv_lvl_t priv_lvl,
@@ -333,7 +333,7 @@ module csr_regfile
   // Smlwid
   logic [CVA6Cfg.XLEN-1:0] mlwid_q, mlwid_d;
   // Smlwidlist
-  logic [CVA6Cfg.NWorlds-1:0] mlwidlist_q, mlwidlist_d;
+  logic [(CVA6Cfg.NWorlds > 0 ? CVA6Cfg.NWorlds : 1)-1:0] mlwidlist_q, mlwidlist_d;
   // Smwdeleg / Sswid
   logic [CVA6Cfg.XLEN-1:0] slwid_q, slwid_d;
   logic [CVA6Cfg.XLEN-1:0] mwiddeleg_q, mwiddeleg_d;

@@ -50,7 +50,7 @@ module wt_dcache_missunit
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] miss_vld_bits_i,
     input logic [NumPorts-1:0][2:0] miss_size_i,
     input logic [NumPorts-1:0][CVA6Cfg.MEM_TID_WIDTH-1:0] miss_id_i,  // used as transaction ID
-    input logic [NumPorts-1:0][$clog2(CVA6Cfg.NWorlds)-1:0] miss_wid_i,  // World ID
+    input logic [NumPorts-1:0][CVA6Cfg.WID_WIDTH-1:0] miss_wid_i,  // World ID
     // signals that the request collided with a pending read
     output logic [NumPorts-1:0] miss_replay_o,
     // signals response from memory
@@ -70,7 +70,7 @@ module wt_dcache_missunit
     output logic [CVA6Cfg.DCACHE_USER_LINE_WIDTH-1:0] wr_cl_user_o,
     output logic [CVA6Cfg.DCACHE_LINE_WIDTH/8-1:0] wr_cl_data_be_o,
     output logic [CVA6Cfg.DCACHE_SET_ASSOC-1:0] wr_vld_bits_o,
-    output logic [$clog2(CVA6Cfg.NWorlds)-1:0] wr_cl_wid_o,
+    output logic [CVA6Cfg.WID_WIDTH-1:0] wr_cl_wid_o,
     // memory interface
     input logic mem_rtrn_vld_i,
     input dcache_rtrn_t mem_rtrn_i,
@@ -129,7 +129,7 @@ module wt_dcache_missunit
     logic                                        nc;
     logic [$clog2(CVA6Cfg.DCACHE_SET_ASSOC)-1:0] repl_way;
     logic [$clog2(NumPorts)-1:0]                 miss_port_idx;
-    logic [$clog2(CVA6Cfg.NWorlds)-1:0]          wid;
+    logic [CVA6Cfg.WID_WIDTH-1:0]          wid;
   } mshr_t;
 
   mshr_t mshr_d, mshr_q;

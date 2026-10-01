@@ -105,7 +105,7 @@ module load_store_unit
     // Virtualization mode at which load and stores should happen - CSR_REGFILE
     input  logic                                      ld_st_v_i,
     // World ID 
-    input  logic        [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_i,
+    input  logic        [CVA6Cfg.WID_WIDTH-1:0] ld_st_wid_i,
     // Instruction is a hyp load/store - CSR_REGFILE
     output logic                                      csr_hs_ld_st_inst_o,
     // Supervisor User Memory - CSR_REGFILE

@@ -196,7 +196,7 @@ module ex_stage
     // Virtualization mode at which load and stores should happen - CSR_REGFILE
     input logic ld_st_v_i,
     // World ID
-    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] ld_st_wid_i,
+    input logic [CVA6Cfg.WID_WIDTH-1:0] ld_st_wid_i,
     // Instruction is hypervisor load/store - CSR_REGFILE
     output logic csr_hs_ld_st_inst_o,
     // Supervisor user memory - CSR_REGFILE

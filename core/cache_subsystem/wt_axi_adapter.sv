@@ -86,7 +86,7 @@ module wt_axi_adapter
   logic axi_wr_valid, axi_rd_valid, axi_rd_rdy, axi_wr_rdy;
   logic axi_rd_lock, axi_wr_lock, axi_rd_exokay, axi_wr_exokay, wr_exokay;
   logic [CVA6Cfg.AxiAddrWidth-1:0] axi_rd_addr, axi_wr_addr;
-  logic [$clog2(CVA6Cfg.NWorlds)-1:0] axi_rd_wid, axi_wr_wid;
+  logic [CVA6Cfg.WID_WIDTH-1:0] axi_rd_wid, axi_wr_wid;
   logic [AxiBlenWidth-1:0] axi_rd_blen, axi_wr_blen;
   logic [2:0] axi_rd_size, axi_wr_size;
   logic [CVA6Cfg.AxiIdWidth-1:0]

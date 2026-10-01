@@ -46,7 +46,7 @@ module store_buffer
     input logic [CVA6Cfg.XLEN-1:0] data_i,  // data which is placed in the queue
     input logic [(CVA6Cfg.XLEN/8)-1:0] be_i,  // byte enable in
     input logic [1:0] data_size_i,  // type of request we are making (e.g.: bytes to write)
-    input logic [$clog2(CVA6Cfg.NWorlds)-1:0]  wid_i,         // World ID
+    input logic [CVA6Cfg.WID_WIDTH-1:0]  wid_i,         // World ID
     input cbo_t cbo_op_i,  // type of cache block operation
 
     // D$ interface
@@ -65,7 +65,7 @@ module store_buffer
     cbo_t cbo_op;
     logic valid;  // this entry is valid, we need this for checking if the address offset matches
     logic wait_rvalid;  // need to wait for rvalid...
-    logic [$clog2(CVA6Cfg.NWorlds)-1:0]  wid;
+    logic [CVA6Cfg.WID_WIDTH-1:0]  wid;
   }
       speculative_queue_n[DEPTH_SPEC-1:0],
       speculative_queue_q[DEPTH_SPEC-1:0],

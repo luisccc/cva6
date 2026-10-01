@@ -32,7 +32,7 @@ module axi_shim #(
     input logic rd_req_i,
     output logic rd_gnt_o,
     input logic [CVA6Cfg.AxiAddrWidth-1:0] rd_addr_i,
-    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] rd_wid_i,
+    input logic [CVA6Cfg.WID_WIDTH-1:0] rd_wid_i,
     input logic [$clog2(AxiNumWords)-1:0] rd_blen_i,  // axi convention: LEN-1
     input logic [2:0] rd_size_i,
     input  logic [CVA6Cfg.AxiIdWidth-1:0]   rd_id_i,   // use same ID for reads, or make sure you only have one outstanding read tx
@@ -49,7 +49,7 @@ module axi_shim #(
     input logic wr_req_i,
     output logic wr_gnt_o,
     input logic [CVA6Cfg.AxiAddrWidth-1:0] wr_addr_i,
-    input logic [$clog2(CVA6Cfg.NWorlds)-1:0] wr_wid_i,
+    input logic [CVA6Cfg.WID_WIDTH-1:0] wr_wid_i,
     input logic [AxiNumWords-1:0][CVA6Cfg.AxiDataWidth-1:0] wr_data_i,
     input logic [AxiNumWords-1:0][CVA6Cfg.AxiUserWidth-1:0] wr_user_i,
     input logic [AxiNumWords-1:0][(CVA6Cfg.AxiDataWidth/8)-1:0] wr_be_i,

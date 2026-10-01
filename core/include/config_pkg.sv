@@ -303,6 +303,7 @@ package config_pkg;
     bit SSWID;
 
     int unsigned NWorlds;
+    int unsigned WID_WIDTH;
     int unsigned PMWID;
     int unsigned PMWIDLIST;
     int unsigned PMLWIDLIST;    
